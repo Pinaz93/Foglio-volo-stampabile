@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Foglio di volo</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Foglio volo">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<style>:root{--bg:#e9edf2;--fg:#12161c;--mut:#5b6472;--btn:#0b3a8f;--btnfg:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c}}
+:root[data-theme="dark"]{--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 Barlow,system-ui,sans-serif}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;max-width:210mm;margin:0 auto}
+.bar h1{font:700 24px 'Barlow Condensed',sans-serif;margin:0 auto 0 0}
+button,.pick{font:600 15px Barlow,sans-serif;background:var(--btn);color:var(--btnfg);border:0;border-radius:6px;padding:9px 14px;cursor:pointer}
+.pick{position:relative;overflow:hidden;display:inline-block}.pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:100px}
+#msg{max-width:210mm;margin:0 auto;padding:0 16px 10px;color:var(--mut)}
+#msg b{color:var(--fg)}
+.page{max-width:210mm;margin:0 auto 18px}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;color:#12161c;box-shadow:0 1px 8px rgba(0,0,0,.18);margin-bottom:8px;font-size:8.6pt;line-height:1.22;min-height:148mm}
+.col{padding:2.5mm;border-right:1px dashed #888;min-width:0}
+.col:last-child{border-right:0}
+.hd{display:flex;justify-content:space-between;align-items:baseline;font-weight:600;border-bottom:1.5px solid #12161c;padding-bottom:1px}
+.leg{font:700 17pt/1 'Barlow Condensed',sans-serif}
+.cs{font:700 31pt/1 'Barlow Condensed',sans-serif;text-align:center;margin:4px 0 1px}
+.ap{font:700 19pt/1 'Barlow Condensed',sans-serif;text-align:center}
+.ap small{display:block;font:500 9pt 'Barlow Condensed',sans-serif;color:#444}
+.sec{border-top:1px solid #12161c;margin-top:4px;padding-top:2px}
+.sec h3{font:700 9pt 'Barlow Condensed',sans-serif;margin:0 0 1px;color:#555}
+.row{display:flex;justify-content:space-between;gap:4px}
+.row span:first-child{color:#555}
+.row b{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.row em{font-style:normal;color:#555;font-weight:400}
+.proc{font:700 15pt/1.1 'Barlow Condensed',sans-serif}
+.blk{background:#f6c945;border-radius:3px;padding:2px 5px;margin:2px 0 3px;display:flex;justify-content:space-between;align-items:baseline}
+.blk small{font-size:8pt;font-weight:600}.blk span{font:700 24pt/1 'Barlow Condensed',sans-serif}
+.sm{font-size:7.5pt;color:#444}
+input.f{font:700 14pt/1 'Barlow Condensed',sans-serif;width:20mm;border:0;border-bottom:1.5px solid #12161c;background:transparent;color:#12161c;text-align:center;border-radius:0;padding:0}
+.warn{color:#b3261e}
+@media (max-width:700px){.strip{grid-template-columns:1fr;min-height:0}.col{border-right:0;border-bottom:1px dashed #888;padding:12px}.strip{font-size:11pt}}
+@media print{
+ #th{display:none}
+ @page{size:A4;margin:4mm}
+ body{background:#fff}.bar,#msg{display:none}
+ .page{max-width:none;margin:0;height:289mm;break-after:page;page-break-after:always}
+ .page:last-child{break-after:auto;page-break-after:auto}
+ .strip{box-shadow:none;margin:0;height:144.5mm;min-height:0;overflow:hidden;grid-template-columns:repeat(4,1fr)!important;font-size:8.6pt}
+ .strip+.strip{border-top:1px dashed #888}
+ .col{border-right:1px dashed #888!important;border-bottom:0!important;padding:2.5mm!important}.col:last-child{border-right:0!important}
+ input.f::placeholder{color:transparent}
+}
+</style>
+</head>
+<body>
+<div class="bar">
+ <h1>Foglio di volo</h1>
+ <label class="pick"><input id="file" type="file" accept="application/pdf" multiple>Carica PDF LIDO</label>
+ <button id="print" type="button">Scarica PDF</button>
+ <button id="thermalBtn" type="button">Striscia termica</button>
+</div>
+<div id="msg">Carica uno o più PDF LIDO (anche tutti e 4 i voli insieme). Ogni giornata diventa mezza pagina A4 con una colonna per volo: due giornate per foglio.</div>
+<div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
+<div id="out"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const v=x=>x==null||x===''?'—':esc(x);
+const hm=t=>t?t.slice(0,2)+':'+t.slice(2):'—';
+const mins=t=>t?(+t.slice(0,2))*60+(+t.slice(2)):0;
+
+async function readPdf(file){
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  let out='';
+  for(let p=1;p<=Math.min(pdf.numPages,6);p++){
+    const c=await (await pdf.getPage(p)).getTextContent();
+    const rows=[];
+    [...c.items].filter(i=>i.str!==undefined).sort((a,b)=>b.transform[5]-a.transform[5]).forEach(i=>{
+      const r=rows[rows.length-1];
+      if(r&&Math.abs(r.y-i.transform[5])<=2.5)r.it.push(i);else rows.push({y:i.transform[5],it:[i]});
+    });
+    rows.forEach(r=>{out+=r.it.sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')+'\n'});
+  }
+  return out;
+}
+
+function parse(raw){
+  const T=raw.replace(/[ \t]+/g,' ');
+  const m=(re,i=1)=>{const r=T.match(re);return r?r[i]:null};
+  const d={};
+  const h=T.match(/(FR\s?\d{1,4})\s+(\d{2}[A-Z]{3}\d{4})\s+([A-Z]{4})-([A-Z]{4})\s+(\w{4})\s+(\w+)\s+RELEASE/);
+  if(h){d.fn=h[1].replace(/\s/g,'');d.date=h[2];d.dep=h[3];d.arr=h[4];d.type=h[5];d.reg=h[6]}
+  const c=T.match(/C\/S\s+(\w+)\s+(\w{4})\/(\w{3})\s+(\w{4})\/(\w{3})/);
+  if(c){d.cs=c[1];d.depI=c[3];d.arrI=c[5];d.dep=d.dep||c[2];d.arr=d.arr||c[4]}
+  d.ci=m(/CI\s+(\d+)/);
+  {const fsm=T.match(/\b[A-Z]{4}\/(0\d{3}\/(?:[A-Z0-9_]+\/)*[A-Z0-9_]*)/);
+    if(fsm){const lv=[];for(const t of fsm[1].split('/')){if(t==='T_O_D')break;if(/^0\d{3}$/.test(t)&&+t>=200)lv.push(+t)}
+      if(lv.length){const mx=Math.max(...lv);d.fl=lv[0]===mx?String(lv[0]):lv[0]+'>'+mx}}}
+  d.fl=d.fl||m(/N\d{4}F(\d{3})/);
+  if(d.dep&&d.arr){
+    const r=T.match(new RegExp(d.dep+'/(\\d{2}[LRC]?)\\s+([\\s\\S]*?)\\s+'+d.arr+'/(\\d{2}[LRC]?)'));
+    if(r){
+      d.rwyD=r[1];d.rwyA=r[3];
+      const tk=r[2].trim().split(/\s+/);d.route=tk.join(' ');
+      const isP=s=>/^[A-Z]{3,5}\d[A-Z]$/.test(s);
+      d.sid=isP(tk[0])?tk[0]:'DCT (nessuna SID)';
+      d.star=isP(tk[tk.length-1])?tk[tk.length-1]:'DCT (nessuna STAR)';
+    }
+  }
+  const tm=k=>{const r=T.match(new RegExp(k+'\\s+(\\d{4})Z/(\\d{4})L'));return r?{z:r[1],l:r[2]}:{}};
+  d.off=tm('OFF BLOCKS');d.air=tm('AIRBORNE');d.ldg=tm('LANDED');d.on=tm('ON BLOCKS');
+  const sk=T.match(/ON BLOCKS\s+\d{4}Z\/\d{4}L\s+(\d{4})Z\/(\d{4})L/);if(sk)d.sta={z:sk[1],l:sk[2]};
+  d.blockT=m(/BLOCK TIME\s+(\d{4})/);d.fltT=m(/FLIGHT TIME\s+(\d{4})/);
+  d.gnd=m(/GND DIST (\d+)/);d.airD=m(/AIR DIST (\d+)/);d.avgFF=m(/AVG FF KGS\/HR (\d+)/);d.avgW=m(/AVG WIND (\d+\/\d+)/);
+  const w=k=>{const r=T.match(new RegExp(k+'\\s+TOW\\s+([\\d.]+)\\s+LW\\s+([\\d.]+)\\s+ZFW\\s+([\\d.]+)'));return r?{tow:+r[1],lw:+r[2],zfw:+r[3]}:null};
+  d.max=w('MAXIMUM');d.est=w('ESTIMATED');
+  const f=(k,n=1)=>m(new RegExp(k),n);
+  d.trip=f('TRIP \\w{3,4} (\\d+) \\d{4}');d.tripT=f('TRIP \\w{3,4} \\d+ (\\d{4})');
+  d.cont=f('MIN CONT (\\d+)');d.altn=f('ALTN [A-Z]{3} (\\d+) \\d{4}');d.finres=f('FINRES (\\d+) \\d{4}');
+  d.addres=f('ADD RES (\\d+)');d.opn=f('\\nOPN (\\d+)');d.toFuel=f('\\nT/OFF FUEL (\\d+)');
+  d.taxi=f('TAXI \\w{3} (\\d+)');d.block=f('BLOCK FUEL \\w{3} (\\d+)');
+  d.fmcRes=f('RESERVES (\\d+)');d.fmcTT=f('TRIP\\+TAXI (\\d+)');
+  d.tank=f('\\n([^\\n]*TANKERING[^\\n]*)');d.disp=f('DISP RMKS ([^\\n]*)');
+  const el=T.match(/DEST ELEVATION: (\w{4}): (\d+)FT ALTN ELEVATION: (\w{4}): (\d+)FT/);
+  if(el){d.elevA=el[2];d.elevAlt=el[4]}
+  const nx=T.match(/NEXT LEG DATA:\s*(FR\s?\d+)\s+(\S+)\s+(\S+)\s*-\s*(\S+)\s+(\S+)\s+STD\s+(\d{4})\s+ALTN\s+(\S+)/);
+  if(nx)d.next={fn:nx[1].replace(/\s/g,''),from:nx[2],rwy:nx[3],to:nx[4],std:nx[6],alt:nx[7]};
+  d.alts=[];const re=/^\s*C(\d)\s+([A-Z]{4})\s+(\d{3})\s+(\d{3})\s+.*?\s(\d{3})\s+(\d{1,3})\s+[MP]\d{3}\s+(\d{4})\s+(\d{3,5})\s*$/gm;
+  let a;while((a=re.exec(T))){d.alts.push({icao:a[2],trk:a[3],dist:a[4],fl:a[5],time:a[7],fuel:+a[8]})}
+  return d;
+}
+
+const row=(k,val,u='')=>`<div class="row"><span>${k}</span><b>${v(val)}${val!=null&&u?' '+u:''}</b></div>`;
+const wt=(k,e,mx)=>`<div class="row"><span>${k}</span><b class="${e&&mx&&e>mx?'warn':''}">${e?e.toFixed(1):'—'} <em>(${mx?mx.toFixed(1):'—'})</em></b></div>`;
+const MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const dkey=s=>s?s.slice(5)+String(MON.indexOf(s.slice(2,5))+1).padStart(2,'0')+s.slice(0,2):'';
+const tz=t=>t&&t.z?`${hm(t.z)}Z/${hm(t.l)}L`:null;
+
+function col(d,n){
+  if(!d)return '<div class="col"></div>';
+  const main=d.alts[0];
+  const alts=d.alts.map((a,i)=>`<div class="row"><span>${a.icao}${i?'':' ★'}</span><b>${a.fuel}${i?` <em>${a.fuel-main.fuel>=0?'+':''}${a.fuel-main.fuel}</em>`:''}</b></div>`).join('')||'<div class="sm">Non trovati</div>';
+  const dt=d.date?d.date.replace(/(\d{2})([A-Z]{3})\d{4}/,'$1 $2'):'—';
+  return `<div class="col">
+  <div class="hd"><span class="leg">${n}°</span><span>${v(d.fn)}</span><span>${dt}</span></div>
+  <div class="cs">${v(d.cs)}</div>
+  <div class="ap">${v(d.dep)} → ${v(d.arr)}<small>${v(d.depI)} → ${v(d.arrI)} · FL${v(d.fl)} · ${v(d.reg)}</small></div>
+  <div class="sec"><h3>Orari</h3>${row('Off',tz(d.off))}${row('T/O',tz(d.air))}${row('Ldg',tz(d.ldg))}${row('On',tz(d.on))}</div>
+  <div class="sec"><h3>Procedure</h3>
+   <div class="row"><span>${v(d.dep)} RWY</span><b>${v(d.rwyD)}</b></div><div class="proc">${v(d.sid)}</div>
+   <div class="row"><span>${v(d.arr)} RWY</span><b>${v(d.rwyA)}</b></div><div class="proc">${v(d.star)}</div></div>
+  <div class="sec"><h3>Carburante (kg)</h3>
+   <div class="blk"><small>Block min</small><span>${v(d.block)}</span></div>
+   <div class="row"><span>Block eff.</span><input class="f" inputmode="numeric" placeholder="____"></div>
+   ${row('Taxi',d.taxi)}${row('Trip',d.trip)}${row('Cont',d.cont)}${row('Altn',d.altn)}${row('FinRes',d.finres)}${row('T/O fuel',d.toFuel)}</div>
+  <div class="sec"><h3>Alternati (fuel · Δ)</h3>${alts}</div>
+  <div class="sec"><h3>Pesi t (max)</h3>${wt('TOW',d.est&&d.est.tow,d.max&&d.max.tow)}${wt('LW',d.est&&d.est.lw,d.max&&d.max.lw)}${wt('ZFW',d.est&&d.est.zfw,d.max&&d.max.zfw)}
+   <div class="row"><span>Pax</span><input class="f" inputmode="numeric" placeholder="___"></div></div>
+  <div class="sm" style="margin-top:3px">${v(d.tank)}${d.disp&&d.disp!=='NIL'?'<br>DISP: '+esc(d.disp):''}${d.next?`<br>Poi ${esc(d.next.fn)} STD ${hm(d.next.std)}Z`:''}</div>
+  </div>`;
+}
+
+function render(list){
+  const g={};list.forEach(d=>(g[d.date]=g[d.date]||[]).push(d));
+  const strips=[];
+  Object.keys(g).sort((a,b)=>dkey(a).localeCompare(dkey(b))).forEach(k=>{
+    const L=g[k].sort((a,b)=>((a.off&&a.off.z)||'').localeCompare((b.off&&b.off.z)||''));
+    for(let i=0;i<L.length;i+=4)strips.push([0,1,2,3].map(j=>col(L[i+j],i+j+1)).join(''));
+  });
+  let h='';
+  for(let i=0;i<strips.length;i+=2)h+=`<div class="page"><div class="strip">${strips[i]}</div>${strips[i+1]?`<div class="strip">${strips[i+1]}</div>`:''}</div>`;
+  return h;
+}
+
+var LAST=[];
+function strip(d,n){
+  const S=4,W=280,M=6,IW=W-2*M,F='"Barlow Condensed","Arial Narrow",sans-serif';
+  const c=document.createElement('canvas');c.width=W*S;c.height=1500*S;
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#000';x.strokeStyle='#000';x.textBaseline='top';
+  const font=(s,b)=>`${b?700:500} ${s*S}px ${F}`;
+  const tw=(t,s,b)=>{x.font=font(s,b);return x.measureText(t).width/S};
+  const fit=(t,s,b,mw=IW)=>{while(tw(t,s,b)>mw&&s>8)s--;return s};
+  const T=(t,s,b,al='l',adv=true)=>{s=fit(t,s,b);const w=tw(t,s,b);x.font=font(s,b);x.fillText(t,(al==='l'?M:al==='r'?W-M-w:(W-w)/2)*S,y*S);if(adv)y+=s*1.1;return s};
+  const rule=(th=2,g=4)=>{y+=g;x.fillRect(M*S,y*S,IW*S,th*S);y+=th+g};
+  const R=(k,val,s=22)=>{x.font=font(s-3,false);x.fillText(k,M*S,(y+2)*S);const w=tw(val,s,true);x.font=font(s,true);x.fillText(val,(W-M-w)*S,y*S);y+=s*1.15};
+  const g=v=>v==null||v===''?'-':String(v);
+  let y=12;
+  const dt=d.date?d.date.slice(0,2)+' '+d.date.slice(2,5):'-';
+  T(n+'°',28,true,'l',false);T(g(d.fn),20,true,'c',false);T(dt,18,true,'r');y+=2;
+  rule(3,5);
+  T(g(d.cs),88,true,'c');T(g(d.dep)+' → '+g(d.arr),38,true,'c');
+  T(g(d.depI)+' → '+g(d.arrI)+'  FL'+g(d.fl),17,false,'c');
+  rule();
+  R(g(d.dep)+' RWY',g(d.rwyD));T(g(d.sid),40,true);
+  R(g(d.arr)+' RWY',g(d.rwyA));T(g(d.star),40,true);
+  rule();
+  const y0=y+2,h=60;x.lineWidth=3*S;x.strokeRect(M*S,y0*S,IW*S,h*S);
+  x.font=font(18,true);x.fillText('Block',(M+6)*S,(y0+8)*S);x.fillText('min',(M+6)*S,(y0+30)*S);
+  const b=g(d.block),bs=fit(b,64,true,IW-76);x.font=font(bs,true);x.fillText(b,(W-M-6-tw(b,bs,true))*S,(y0+(h-bs)/2)*S);y=y0+h+8;
+  R('Taxi',g(d.taxi));R('Trip',g(d.trip));
+  rule();T('ALTERNATI (kg)',16,true);
+  const al=d.alts||[];
+  al.forEach((a,i)=>R(a.icao+(i?'':' ★'),String(a.fuel)+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
+  rule();T('PESI t (max)',16,true);
+  const e=d.est||{},m=d.max||{};
+  [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>R(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
+  y+=10;x.font=font(18,false);x.fillText('Pax',M*S,y*S);x.fillRect((M+36)*S,(y+22)*S,(IW-36)*S,2*S);y+=32;
+  rule();T('OFP '+g(d.ofp),15,false,'c');y+=10;
+  for(let i=M;i<W-M;i+=14)x.fillRect(i*S,y*S,7*S,1.5*S);
+  y+=14;
+  const H=Math.ceil(y),o=document.createElement('canvas');o.width=W;o.height=H;
+  const ox=o.getContext('2d');ox.imageSmoothingQuality='high';ox.drawImage(c,0,0,W*S,H*S,0,0,W,H);
+  const id=ox.getImageData(0,0,W,H),p=id.data;
+  for(let i=0;i<p.length;i+=4){const k=p[i]<150?0:255;p[i]=p[i+1]=p[i+2]=k;p[i+3]=255}
+  ox.putImageData(id,0,0);return o;
+}
+async function thermal(){
+  if(!LAST.length){$('msg').textContent='Carica prima i PDF LIDO.';return}
+  try{await document.fonts.load('700 20px "Barlow Condensed"');await document.fonts.load('500 20px "Barlow Condensed"')}catch(e){}
+  const box=$('th');box.innerHTML='';
+  const L=[...LAST].sort((a,b)=>(dkey(a.date)+((a.off&&a.off.z)||'')).localeCompare(dkey(b.date)+((b.off&&b.off.z)||'')));
+  const cnt={};
+  const cs=L.map(d=>{cnt[d.date]=(cnt[d.date]||0)+1;return strip(d,cnt[d.date])});
+  const big=document.createElement('canvas');big.width=280;big.height=cs.reduce((s,c)=>s+c.height,0);
+  const bx=big.getContext('2d');bx.fillStyle='#fff';bx.fillRect(0,0,big.width,big.height);
+  let yy=0;cs.forEach(c=>{bx.drawImage(c,0,yy);yy+=c.height});
+  const blob=await new Promise(r=>big.toBlob(r,'image/png'));
+  const url=URL.createObjectURL(blob),name='strisce.png';
+  const w=document.createElement('div');
+  w.innerHTML=`<p><b>${cs.length} voli</b> in un\'unica immagine · circa ${Math.round(big.height/8)} mm di carta</p><img src="${url}" alt="Striscia termica" style="width:280px;background:#fff;border:1px solid #888;display:block;margin:6px 0 10px">`;
+  const sh=document.createElement('button');sh.textContent='Condividi (Tinyprint)';
+  sh.onclick=async()=>{const f=new File([blob],name,{type:'image/png'});try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else throw 0}catch(err){await saveFile(blob,name)}};
+  w.appendChild(sh);box.appendChild(w);
+  box.scrollIntoView();
+}
+
+async function saveFile(blob,name){
+  const url=URL.createObjectURL(blob);
+  const type=blob.type||(name.endsWith('.pdf')?'application/pdf':'image/png');
+  const file=new File([blob],name,{type});
+  try{const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()}catch(e){}
+  const m=$('msg');
+  m.innerHTML='<b>File pronto:</b> '+esc(name)+' · <a href="'+url+'" download="'+esc(name)+'" style="color:inherit">Scarica di nuovo</a>';
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    const b=document.createElement('button');b.textContent='Condividi / Salva su File';b.style.marginLeft='8px';
+    b.onclick=async()=>{try{await navigator.share({files:[file]})}catch(e){}};
+    m.appendChild(b);
+  }
+}
+function pdfCol(doc,x,top,w,d,n){
+  if(!d)return;
+  const pg=v=>v==null||v===''?'-':String(v);
+  const p=2.5,L=x+p,R=x+w-p,C=(L+R)/2;let y=top+p;
+  const t=(s,xx,yy,sz,b,al)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(sz);doc.text(String(s),xx,yy,{align:al||'left'})};
+  const fitT=(s,xx,yy,sz,b,al)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(sz);while(doc.getTextWidth(String(s))>R-L&&sz>6){sz-=.5;doc.setFontSize(sz)}doc.text(String(s),xx,yy,{align:al||'left'})};
+  const gray=g=>doc.setTextColor(g);
+  const ln=(x1,x2,yy,lw)=>{doc.setLineWidth(lw);doc.line(x1,yy,x2,yy)};
+  const row=(k,val)=>{y+=3.2;gray(80);t(k,L,y,7.8,false);gray(0);t(val,R,y,8.2,true,'right')};
+  const sec=s=>{y+=1.6;ln(L,R,y,.18);y+=2.7;t(s,L,y,7.5,true)};
+  y+=5;t(n+'°',L,y,15,true);t(pg(d.fn),C,y,8,true,'center');t(d.date?d.date.slice(0,2)+' '+d.date.slice(2,5):'-',R,y,8,true,'right');
+  y+=1.5;ln(L,R,y,.35);
+  y+=10;fitT(pg(d.cs),C,y,25,true,'center');
+  y+=6.5;fitT(pg(d.dep)+' > '+pg(d.arr),C,y,13,true,'center');
+  y+=3.6;fitT(pg(d.depI)+' > '+pg(d.arrI)+'  FL'+pg(d.fl)+'  '+pg(d.reg),C,y,7,false,'center');
+  sec('ORARI');[['Off',d.off],['T/O',d.air],['Ldg',d.ldg],['On',d.on]].forEach(([k,o])=>row(k,o&&o.z?hm(o.z)+'Z/'+hm(o.l)+'L':'-'));
+  sec('PROCEDURE');
+  row(pg(d.dep)+' RWY',pg(d.rwyD));y+=4.6;fitT(pg(d.sid),L,y,13.5,true);
+  row(pg(d.arr)+' RWY',pg(d.rwyA));y+=4.6;fitT(pg(d.star),L,y,13.5,true);
+  sec('CARBURANTE (kg)');
+  y+=8.5;doc.setLineWidth(.35);doc.rect(L,y-7.5,R-L,9);
+  t('Block min',L+1.5,y-2,7,true);t(pg(d.block),R-1.5,y,21,true,'right');y+=1;
+  y+=3.2;gray(80);t('Block eff.',L,y,7.8,false);gray(0);ln(L+17,R,y+.5,.2);
+  row('Taxi',pg(d.taxi));row('Trip',pg(d.trip));
+  sec('ALTERNATI (fuel, diff.)');
+  const al=d.alts||[];
+  al.forEach((a,i)=>row(a.icao+(i?'':' *'),a.fuel+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
+  sec('PESI t (max)');
+  const e=d.est||{},m=d.max||{};
+  [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>row(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
+  y+=3.9;gray(80);t('Pax',L,y,7.8,false);gray(0);ln(L+9,R,y+.5,.2);
+  y+=3.6;gray(64);
+  if(d.tank)t(String(d.tank).slice(0,40),L,y,6,false);
+  if(d.next){y+=2.6;t('Poi '+d.next.fn+' STD '+hm(d.next.std)+'Z',L,y,6,false)}
+  if(d.ofp){y+=2.6;t('OFP '+d.ofp,L,y,6,false)}
+  gray(0);
+}
+async function pdfSheet(){
+  if(!LAST.length){$('msg').textContent='Carica prima i PDF LIDO.';return}
+  if(!window.jspdf){$('msg').textContent='Libreria PDF non caricata: ricarica la pagina.';return}
+  const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  const g={};LAST.forEach(d=>(g[d.date]=g[d.date]||[]).push(d));
+  const strips=[];
+  Object.keys(g).sort((a,b)=>dkey(a).localeCompare(dkey(b))).forEach(k=>{
+    const L=g[k].sort((a,b)=>((a.off&&a.off.z)||'').localeCompare((b.off&&b.off.z)||''));
+    for(let i=0;i<L.length;i+=4)strips.push([L.slice(i,i+4),i]);
+  });
+  const cw=52.5,sh=148.5;
+  for(let i=0;i<strips.length;i+=2){
+    if(i)doc.addPage();
+    for(let s=0;s<2&&i+s<strips.length;s++){
+      const [fl,base]=strips[i+s],top=s*sh;
+      for(let j=0;j<4;j++)pdfCol(doc,j*cw,top,cw,fl[j],base+j+1);
+      doc.setDrawColor(130);doc.setLineWidth(.15);doc.setLineDashPattern([1,1],0);
+      for(let j=1;j<4;j++)doc.line(j*cw,top,j*cw,top+sh);
+      doc.setDrawColor(0);doc.setLineDashPattern([],0);
+    }
+    doc.setDrawColor(130);doc.setLineDashPattern([1,1],0);doc.line(0,sh,210,sh);doc.setDrawColor(0);doc.setLineDashPattern([],0);
+  }
+  const blob=doc.output('blob');
+  $('th').innerHTML='';
+  await saveFile(blob,'foglio-volo.pdf');
+}
+
+async function load(files){
+  if(!files.length)return;
+  if(typeof pdfjsLib==='undefined'){$('msg').textContent='Libreria PDF non caricata: controlla la connessione e ricarica la pagina.';return}
+  const out=[],errs=[];
+  $('msg').textContent='Leggo i PDF…';
+  for(const f of files){
+    try{const d=parse(await readPdf(f));if(!d.cs&&!d.fn)throw new Error('formato non riconosciuto');out.push(d)}
+    catch(e){errs.push(f.name+': '+e.message)}
+  }
+  out.sort((a,b)=>((a.off&&a.off.z)||'').localeCompare((b.off&&b.off.z)||''));
+  LAST=out;$('out').innerHTML=render(out);
+  $('msg').innerHTML=out.length?`<b>${out.length} voli pronti.</b> Controlla sempre i dati con l'OFP originale prima di usarli. ${errs.length?'<br>Errori: '+esc(errs.join('; ')):''}`:'Nessun volo letto. '+esc(errs.join('; '));
+}
+$('file').addEventListener('change',e=>{const f=[...e.target.files];e.target.value='';load(f)});
+window.addEventListener('error',e=>{$('msg').textContent='Errore: '+e.message});
+$('thermalBtn').addEventListener('click',thermal);
+$('print').addEventListener('click',pdfSheet);
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();load([...e.dataTransfer.files].filter(f=>/pdf$/i.test(f.name)))});
+</script>
+</body>
+</html>
