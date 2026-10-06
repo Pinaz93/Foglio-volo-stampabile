@@ -7,7 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0b3a8f">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-title" content="Flight sheet">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -83,19 +87,20 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ed summary{cursor:pointer;font-weight:600}.eg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.eg label{display:flex;flex-direction:column;font-size:12px;color:var(--mut)}.eg input{font:600 16px Barlow,sans-serif;padding:6px;border:1px solid var(--mut);border-radius:6px;background:var(--bg);color:var(--fg)}
 #edit{display:grid;gap:10px}
 @media print{#edit{display:none}}
-.wxm{font-weight:700;margin-left:2px}.wx-ok{color:#1a7f37}.wx-warn{color:#b26a00}.wx-bad{color:#b3261e}.wx-na{color:#777}.wxr{font-style:normal;font-size:10px;color:#555;font-weight:400}.thr summary{cursor:pointer;font-weight:600;margin-top:8px}.thr button{margin-top:8px}
+.wxm{font-weight:700;margin-left:2px}.wx-ok{color:#1a7f37}.wx-warn{color:#b26a00}.wx-bad{color:#b3261e}.wx-na{color:#777}.wxr{font-style:normal;font-size:10px;color:#555;font-weight:400}.clr{background:transparent;color:var(--fg);border:1px solid var(--mut);font-size:14px;padding:8px 12px;border-radius:8px;justify-self:start}.rm{margin-top:8px;background:transparent;color:#b3261e;border:1px solid #b3261e;font-size:13px;padding:6px 10px;border-radius:8px}.thr summary{cursor:pointer;font-weight:600;margin-top:8px}.thr button{margin-top:8px}
 </style>
 </head>
 <body>
 <header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip</p></header>
 <main class="panel">
  <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
- <details class="opts card"><summary>Fields to include</summary><div id="optbox"></div></details>
+ <details class="opts card"><summary>Options</summary><div id="optbox"></div></details>
  <div id="edit"></div>
  <div class="acts">
   <button id="print" type="button" disabled>Download A4 PDF<small>2 days per sheet</small></button>
   <button id="thermalBtn" type="button" class="alt" disabled>Thermal strip<small>one image, all flights</small></button>
  </div>
+ <button id="clearBtn" type="button" class="clr" hidden>Clear saved flights</button>
  <div id="msg" class="card">Load one or more LIDO PDFs (all 4 flights at once is fine). Each day becomes half an A4 page with one column per flight: two days per sheet.</div>
 </main>
 <div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
@@ -125,7 +130,7 @@ async function readPdf(file){
 }
 
 /*WX*/
-const WXDEF={okCeil:1500,okVis:5000,badCeil:500,badVis:1500,wMean:20,wGust:0};
+const WXDEF={okCeil:1000,okVis:5000,badCeil:400,badVis:1350,wMean:20,wGust:0};
 const WXMON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 function parseWx(T){
   const out={},L=T.split('\n').map(s=>s.trim());
@@ -383,7 +388,7 @@ function buildOpts(){
   b.insertAdjacentHTML('beforeend','<div class="tfr"><span>Times shown as</span><select id="tf"><option value="both">Z / local</option><option value="z">Z only</option><option value="l">Local only</option></select></div>');
   const tf=b.querySelector('#tf');tf.value=OPT.tf;
   tf.addEventListener('change',()=>{OPT.tf=tf.value;saveOpt();if(LAST.length)$('out').innerHTML=render(LAST)});
-  b.insertAdjacentHTML('beforeend','<details class="thr"><summary>Weather check</summary><label class="sm"><input type="checkbox" id="wxon"> Enable alternates weather check</label><div class="eg">'+WXF.map(([k,l])=>`<label>${l}<input type="number" inputmode="numeric" data-w="${k}" value="${WXT[k]}"></label>`).join('')+'</div><button type="button" id="wxreset">Reset defaults</button><p class="sm">Planning aid only: ✓ means clearly above any plausible planning minima, ! means check minima, wind or TS, ✗ means below the lowest plausible minima, ? means no usable TAF. Final decision with FD PRO and the OM.</p></details>');
+  b.insertAdjacentHTML('beforeend','<details class="thr"><summary>Weather check</summary><label class="sm"><input type="checkbox" id="wxon"> Enable alternates weather check</label><div class="eg">'+WXF.map(([k,l])=>`<label>${l}<input type="number" inputmode="numeric" data-w="${k}" value="${WXT[k]}"></label>`).join('')+'</div><button type="button" id="wxreset">Reset defaults</button><p class="sm">Planning aid only. Defaults: ✓ at ceiling ≥ 1000 ft and vis ≥ 5000 m (VMC), ✗ below 400 ft / 1350 m (CAT I 200 ft / 550 m + OM-A alternate margin 200 ft / 800 m), ! in between. ✓ means clearly above any plausible planning minima, ! means check minima, wind or TS, ✗ means below the lowest plausible minima, ? means no usable TAF. Final decision with FD PRO and the OM.</p></details>');
   const wchg=()=>{WXT=Object.assign({},WXDEF,OPT.wx);saveOpt();wxRefresh();if(LAST.length)$('out').innerHTML=render(LAST)};
   b.querySelectorAll('input[data-w]').forEach(i=>i.addEventListener('change',()=>{const v=parseFloat(i.value);if(isFinite(v))OPT.wx[i.dataset.w]=v;wchg()}));
   const wo=b.querySelector('#wxon');wo.checked=WXON;wo.addEventListener('change',()=>{WXON=wo.checked;OPT.wxOn=WXON;wchg()});
@@ -584,10 +589,15 @@ async function pdfSheet(){
 }
 
 const EF=[['cs','Callsign'],['fl','Cruise FL'],['rwyD','Dep RWY'],['sid','SID'],['rwyA','Arr RWY'],['star','STAR'],['block','Block min'],['taxi','Taxi'],['trip','Trip'],['pax','Pax']];
+const FKEY='fsflights';
+function saveFlights(){try{localStorage.setItem(FKEY,JSON.stringify(LAST))}catch(e){}$('clearBtn').hidden=!LAST.length}
+function fid(d){return [d.fn,d.date,d.dep,d.arr].join('|')}
+function afterChange(){buildEditor();$('print').disabled=$('thermalBtn').disabled=!LAST.length;$('out').innerHTML=LAST.length?render(LAST):'';saveFlights()}
 function buildEditor(){
   const b=$('edit');
-  b.innerHTML=LAST.map((d,i)=>`<details class="card ed"><summary>Edit ${esc(d.fn||'?')} ${esc(d.dep||'')}→${esc(d.arr||'')}</summary><div class="eg">${EF.map(([k,l])=>`<label>${l}<input data-i="${i}" data-e="${k}" value="${esc(d[k]==null?'':d[k])}"></label>`).join('')}</div></details>`).join('');
-  b.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{LAST[+inp.dataset.i][inp.dataset.e]=inp.value;$('out').innerHTML=render(LAST)}));
+  b.innerHTML=LAST.map((d,i)=>`<details class="card ed"><summary>Edit ${esc(d.fn||'?')} ${esc(d.dep||'')}→${esc(d.arr||'')}</summary><div class="eg">${EF.map(([k,l])=>`<label>${l}<input data-i="${i}" data-e="${k}" value="${esc(d[k]==null?'':d[k])}"></label>`).join('')}<button type="button" class="rm" data-rm="${i}">Remove this flight</button></details>`).join('');
+  b.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{LAST[+inp.dataset.i][inp.dataset.e]=inp.value;$('out').innerHTML=render(LAST);saveFlights()}));
+  b.querySelectorAll('[data-rm]').forEach(x=>x.addEventListener('click',()=>{LAST.splice(+x.dataset.rm,1);afterChange();$('msg').textContent=LAST.length?LAST.length+' flights saved.':'No flights saved.'}));
 }
 async function load(files){
   if(!files.length)return;
@@ -598,10 +608,14 @@ async function load(files){
     try{const d=parse(await readPdf(f));if(!d.cs&&!d.fn)throw new Error('formato non riconosciuto');out.push(d)}
     catch(e){errs.push(f.name+': '+e.message)}
   }
-  out.sort((a,b)=>((a.off&&a.off.z)||'').localeCompare((b.off&&b.off.z)||''));
-  LAST=out;buildEditor();$('print').disabled=$('thermalBtn').disabled=!out.length;$('out').innerHTML=render(out);
-  $('msg').innerHTML=out.length?`<b>${out.length} flights ready</b><div class="chips">${out.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')}</div>Always check the data against the original OFP before use. ${errs.length?'<br>Errors: '+esc(errs.join('; ')):''}`:'No flights read. '+esc(errs.join('; '));
+  const ids=new Set(out.map(fid));
+  const all=LAST.filter(d=>!ids.has(fid(d))).concat(out);
+  all.sort((a,b)=>(dkey(a.date)+((a.off&&a.off.z)||'')).localeCompare(dkey(b.date)+((b.off&&b.off.z)||'')));
+  LAST=all;afterChange();
+  $('msg').innerHTML=out.length?`<b>${LAST.length} flights ready</b> (saved on this device)<div class="chips">${LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')}</div>Always check the data against the original OFP before use. ${errs.length?'<br>Errors: '+esc(errs.join('; ')):''}`:'No flights read. '+esc(errs.join('; '));
 }
+$('clearBtn').addEventListener('click',()=>{if(confirm('Delete all saved flights from this device?')){LAST=[];afterChange();$('msg').textContent='Saved flights cleared. Load new LIDO PDFs to start again.'}});
+try{const sv=JSON.parse(localStorage.getItem(FKEY)||'[]');if(Array.isArray(sv)&&sv.length){LAST=sv;wxRefresh();afterChange();$('msg').innerHTML='<b>'+LAST.length+' saved flights restored.</b> Load more PDFs to add to them, or clear them below.<div class="chips">'+LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')+'</div>'}}catch(e){}
 $('file').addEventListener('change',e=>{const f=[...e.target.files];e.target.value='';load(f)});
 window.addEventListener('error',e=>{$('msg').textContent='Error: '+e.message});
 buildOpts();

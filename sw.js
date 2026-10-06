@@ -1,5 +1,5 @@
-const V='fs-v1';
-const PRE=['./','index.html','manifest.webmanifest','icon-192.png',
+const V='fs-v2';
+const PRE=['./','index.html','manifest.webmanifest','icon-192.png','icon-180.png',
 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
