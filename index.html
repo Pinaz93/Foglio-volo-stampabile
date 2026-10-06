@@ -1,18 +1,21 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Foglio di volo</title>
+<title>Flight sheet</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Foglio volo">
+<meta name="theme-color" content="#0b3a8f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Flight sheet">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
-<style>:root{--bg:#e9edf2;--fg:#12161c;--mut:#5b6472;--btn:#0b3a8f;--btnfg:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c}}
-:root[data-theme="dark"]{--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c}
+<style>:root{--bg:#e9edf2;--fg:#12161c;--mut:#5b6472;--btn:#0b3a8f;--btnfg:#fff;--card:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c;--card:#1d2128}}
+:root[data-theme="dark"]{--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c;--card:#1d2128}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 Barlow,system-ui,sans-serif}
@@ -44,10 +47,31 @@ button,.pick{font:600 15px Barlow,sans-serif;background:var(--btn);color:var(--b
 input.f{font:700 14pt/1 'Barlow Condensed',sans-serif;width:20mm;border:0;border-bottom:1.5px solid #12161c;background:transparent;color:#12161c;text-align:center;border-radius:0;padding:0}
 .warn{color:#b3261e}
 @media (max-width:700px){.strip{grid-template-columns:1fr;min-height:0}.col{border-right:0;border-bottom:1px dashed #888;padding:12px}.strip{font-size:11pt}}
+.opts{max-width:210mm;margin:0 auto 8px;padding:0 16px}.opts summary{cursor:pointer;font-weight:600}.orow{display:grid;grid-template-columns:1fr 56px 56px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(128,128,128,.25)}.orow input{width:20px;height:20px;justify-self:center}.oh{font-weight:600;color:var(--mut);text-align:center}.oh span:first-child{text-align:left}
+
+.top,.panel{max-width:210mm;margin:0 auto;padding:0 16px}
+.top{padding-top:18px;padding-bottom:12px}
+.top h1{font:700 32px/1 'Barlow Condensed',sans-serif;margin:0}
+.top p{margin:4px 0 0;color:var(--mut)}
+.panel{display:grid;gap:10px;padding-bottom:12px}
+.card{background:var(--card);border-radius:10px;padding:12px 14px}
+.pick.drop{display:flex;align-items:center;gap:14px;text-align:left;background:var(--card);color:var(--fg);border:2px dashed var(--btn);border-radius:12px;padding:18px 16px}
+.drop .ic{font:700 34px/1 'Barlow Condensed',sans-serif;width:44px;height:44px;border-radius:50%;background:var(--btn);color:var(--btnfg);display:flex;align-items:center;justify-content:center;flex:none}
+.drop .dt{display:flex;flex-direction:column;gap:2px}.drop b{font-size:17px}.drop small{color:var(--mut);font-weight:400}
+.panel .opts{max-width:none;margin:0}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acts button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 8px;font-size:16px;border-radius:10px}
+.acts small{font-weight:400;font-size:12px;opacity:.8}
+.acts .alt{background:transparent;color:var(--fg);border:2px solid var(--btn)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.panel #msg{max-width:none;margin:0;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chips span{background:var(--bg);color:var(--fg);border-radius:20px;padding:2px 10px;font-weight:600;font-size:13px}
+@media print{.opts{display:none}}
 @media print{
  #th{display:none}
  @page{size:A4;margin:4mm}
- body{background:#fff}.bar,#msg{display:none}
+ body{background:#fff}.bar,#msg,.top,.panel{display:none}
  .page{max-width:none;margin:0;height:289mm;break-after:page;page-break-after:always}
  .page:last-child{break-after:auto;page-break-after:auto}
  .strip{box-shadow:none;margin:0;height:144.5mm;min-height:0;overflow:hidden;grid-template-columns:repeat(4,1fr)!important;font-size:8.6pt}
@@ -55,16 +79,24 @@ input.f{font:700 14pt/1 'Barlow Condensed',sans-serif;width:20mm;border:0;border
  .col{border-right:1px dashed #888!important;border-bottom:0!important;padding:2.5mm!important}.col:last-child{border-right:0!important}
  input.f::placeholder{color:transparent}
 }
+.tfr{display:flex;justify-content:space-between;align-items:center;padding:8px 0 2px}.tfr select{font:600 15px Barlow,sans-serif;padding:6px;border-radius:6px}
+.ed summary{cursor:pointer;font-weight:600}.eg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.eg label{display:flex;flex-direction:column;font-size:12px;color:var(--mut)}.eg input{font:600 16px Barlow,sans-serif;padding:6px;border:1px solid var(--mut);border-radius:6px;background:var(--bg);color:var(--fg)}
+#edit{display:grid;gap:10px}
+@media print{#edit{display:none}}
 </style>
 </head>
 <body>
-<div class="bar">
- <h1>Foglio di volo</h1>
- <label class="pick"><input id="file" type="file" accept="application/pdf" multiple>Carica PDF LIDO</label>
- <button id="print" type="button">Scarica PDF</button>
- <button id="thermalBtn" type="button">Striscia termica</button>
-</div>
-<div id="msg">Carica uno o più PDF LIDO (anche tutti e 4 i voli insieme). Ogni giornata diventa mezza pagina A4 con una colonna per volo: due giornate per foglio.</div>
+<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip</p></header>
+<main class="panel">
+ <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
+ <details class="opts card"><summary>Fields to include</summary><div id="optbox"></div></details>
+ <div id="edit"></div>
+ <div class="acts">
+  <button id="print" type="button" disabled>Download A4 PDF<small>2 days per sheet</small></button>
+  <button id="thermalBtn" type="button" class="alt" disabled>Thermal strip<small>one image, all flights</small></button>
+ </div>
+ <div id="msg" class="card">Load one or more LIDO PDFs (all 4 flights at once is fine). Each day becomes half an A4 page with one column per flight: two days per sheet.</div>
+</main>
 <div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
 <div id="out"></div>
 
@@ -137,33 +169,33 @@ function parse(raw){
   return d;
 }
 
-const row=(k,val,u='')=>`<div class="row"><span>${k}</span><b>${v(val)}${val!=null&&u?' '+u:''}</b></div>`;
-const wt=(k,e,mx)=>`<div class="row"><span>${k}</span><b class="${e&&mx&&e>mx?'warn':''}">${e?e.toFixed(1):'—'} <em>(${mx?mx.toFixed(1):'—'})</em></b></div>`;
+const row=(k,val,u='',dk='')=>`<div class="row" data-k="${dk}"><span>${k}</span><b>${v(val)}${val!=null&&u?' '+u:''}</b></div>`;
+const wt=(k,e,mx)=>`<div class="row" data-k="wts"><span>${k}</span><b class="${e&&mx&&e>mx?'warn':''}">${e?e.toFixed(1):'—'} <em>(${mx?mx.toFixed(1):'—'})</em></b></div>`;
 const MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const dkey=s=>s?s.slice(5)+String(MON.indexOf(s.slice(2,5))+1).padStart(2,'0')+s.slice(0,2):'';
-const tz=t=>t&&t.z?`${hm(t.z)}Z/${hm(t.l)}L`:null;
+const tz=t=>{if(!t||!t.z)return null;const z=hm(t.z)+'Z',l=hm(t.l)+'L';return OPT.tf==='z'?z:OPT.tf==='l'?l:z+'/'+l};
 
 function col(d,n){
   if(!d)return '<div class="col"></div>';
   const main=d.alts[0];
-  const alts=d.alts.map((a,i)=>`<div class="row"><span>${a.icao}${i?'':' ★'}</span><b>${a.fuel}${i?` <em>${a.fuel-main.fuel>=0?'+':''}${a.fuel-main.fuel}</em>`:''}</b></div>`).join('')||'<div class="sm">Non trovati</div>';
+  const alts=d.alts.map((a,i)=>`<div class="row"><span>${a.icao}${i?'':' ★'}</span><b>${a.fuel}${i?` <em>${a.fuel-main.fuel>=0?'+':''}${a.fuel-main.fuel}</em>`:''}</b></div>`).join('')||'<div class="sm">Not found</div>';
   const dt=d.date?d.date.replace(/(\d{2})([A-Z]{3})\d{4}/,'$1 $2'):'—';
   return `<div class="col">
   <div class="hd"><span class="leg">${n}°</span><span>${v(d.fn)}</span><span>${dt}</span></div>
   <div class="cs">${v(d.cs)}</div>
   <div class="ap">${v(d.dep)} → ${v(d.arr)}<small>${v(d.depI)} → ${v(d.arrI)} · FL${v(d.fl)} · ${v(d.reg)}</small></div>
-  <div class="sec"><h3>Orari</h3>${row('Off',tz(d.off))}${row('T/O',tz(d.air))}${row('Ldg',tz(d.ldg))}${row('On',tz(d.on))}</div>
-  <div class="sec"><h3>Procedure</h3>
+  <div class="sec"><h3>Times</h3>${row('Off',tz(d.off),'','times')}${row('T/O',tz(d.air),'','times')}${row('Ldg',tz(d.ldg),'','times')}${row('On',tz(d.on),'','times')}${row('Flight time',d.fltT?hm(d.fltT):null,'','flt')}</div>
+  <div class="sec" data-k="procs"><h3>Procedures</h3>
    <div class="row"><span>${v(d.dep)} RWY</span><b>${v(d.rwyD)}</b></div><div class="proc">${v(d.sid)}</div>
    <div class="row"><span>${v(d.arr)} RWY</span><b>${v(d.rwyA)}</b></div><div class="proc">${v(d.star)}</div></div>
-  <div class="sec"><h3>Carburante (kg)</h3>
+  <div class="sec" data-k="fuel"><h3>Fuel (kg)</h3>
    <div class="blk"><small>Block min</small><span>${v(d.block)}</span></div>
-   <div class="row"><span>Block eff.</span><input class="f" inputmode="numeric" placeholder="____"></div>
+   <div class="row" data-k="blockact"><span>Block act.</span><input class="f" inputmode="numeric" placeholder="____"></div>
    ${row('Taxi',d.taxi)}${row('Trip',d.trip)}${row('Cont',d.cont)}${row('Altn',d.altn)}${row('FinRes',d.finres)}${row('T/O fuel',d.toFuel)}</div>
-  <div class="sec"><h3>Alternati (fuel · Δ)</h3>${alts}</div>
-  <div class="sec"><h3>Pesi t (max)</h3>${wt('TOW',d.est&&d.est.tow,d.max&&d.max.tow)}${wt('LW',d.est&&d.est.lw,d.max&&d.max.lw)}${wt('ZFW',d.est&&d.est.zfw,d.max&&d.max.zfw)}
-   <div class="row"><span>Pax</span><input class="f" inputmode="numeric" placeholder="___"></div></div>
-  <div class="sm" style="margin-top:3px">${v(d.tank)}${d.disp&&d.disp!=='NIL'?'<br>DISP: '+esc(d.disp):''}${d.next?`<br>Poi ${esc(d.next.fn)} STD ${hm(d.next.std)}Z`:''}</div>
+  <div class="sec" data-k="alts"><h3>Alternates (fuel · Δ)</h3>${alts}</div>
+  <div class="sec"><h3 data-k="wts">Weights t (max)</h3>${wt('TOW',d.est&&d.est.tow,d.max&&d.max.tow)}${wt('LW',d.est&&d.est.lw,d.max&&d.max.lw)}${wt('ZFW',d.est&&d.est.zfw,d.max&&d.max.zfw)}
+   <div class="row" data-k="pax"><span>Pax</span><input class="f" inputmode="numeric" placeholder="___"></div></div>
+  <div class="sm" data-k="notes" style="margin-top:3px">${v(d.tank)}${d.disp&&d.disp!=='NIL'?'<br>DISP: '+esc(d.disp):''}${d.next?`<br>Next ${esc(d.next.fn)} STD ${hm(d.next.std)}Z`:''}</div>
   </div>`;
 }
 
@@ -179,10 +211,35 @@ function render(list){
   return h;
 }
 
+const KEYS=[['times','Times (off, T/O, ldg, on)'],['flt','Flight time'],['procs','Procedures (RWY, SID, STAR)'],['fuel','Fuel (block, taxi, trip)'],['blockact','Block actual line'],['alts','Alternates'],['wts','Weights'],['pax','Pax line'],['notes','Notes (tankering, next, OFP no.)']];
+const DEF={a4:{},th:{times:false,blockact:false}};
+let OPT={a4:{},th:{},tf:'both'};
+const saveOpt=()=>{try{localStorage.setItem('fsopt',JSON.stringify(OPT))}catch(e){}};
+try{const o=JSON.parse(localStorage.getItem('fsopt')||'{}');OPT={a4:o.a4||{},th:o.th||{},tf:o.tf||'both'}}catch(e){}
+const on=(f,k)=>OPT[f][k]!==undefined?OPT[f][k]:DEF[f][k]!==false;
+function optCss(){
+  const css=KEYS.filter(([k])=>!on('a4',k)).map(([k])=>`.col [data-k="${k}"]{display:none}`).join('');
+  let st=document.getElementById('optcss');if(!st){st=document.createElement('style');st.id='optcss';document.head.appendChild(st)}
+  st.textContent=css;
+}
+function buildOpts(){
+  const b=$('optbox');
+  b.innerHTML='<div class="orow oh"><span></span><span>A4</span><span>Thermal</span></div>'+KEYS.map(([k,l])=>`<div class="orow"><span>${l}</span><input type="checkbox" data-f="a4" data-k="${k}"${on('a4',k)?' checked':''}>${k==='blockact'?'<span></span>':`<input type="checkbox" data-f="th" data-k="${k}"${on('th',k)?' checked':''}>`}</div>`).join('');
+  b.querySelectorAll('input').forEach(i=>i.addEventListener('change',()=>{
+    OPT[i.dataset.f][i.dataset.k]=i.checked;
+    try{localStorage.setItem('fsopt',JSON.stringify(OPT))}catch(e){}
+    optCss();
+  }));
+  b.insertAdjacentHTML('beforeend','<div class="tfr"><span>Times shown as</span><select id="tf"><option value="both">Z / local</option><option value="z">Z only</option><option value="l">Local only</option></select></div>');
+  const tf=b.querySelector('#tf');tf.value=OPT.tf;
+  tf.addEventListener('change',()=>{OPT.tf=tf.value;saveOpt();if(LAST.length)$('out').innerHTML=render(LAST)});
+  optCss();
+}
+
 var LAST=[];
 function strip(d,n){
-  const S=4,W=280,M=6,IW=W-2*M,F='"Barlow Condensed","Arial Narrow",sans-serif';
-  const c=document.createElement('canvas');c.width=W*S;c.height=1500*S;
+  const S=4,W=280,M=6,IW=W-2*M,F='"Barlow Condensed","Arial Narrow",sans-serif',O=k=>on('th',k);
+  const c=document.createElement('canvas');c.width=W*S;c.height=1800*S;
   const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#000';x.strokeStyle='#000';x.textBaseline='top';
   const font=(s,b)=>`${b?700:500} ${s*S}px ${F}`;
   const tw=(t,s,b)=>{x.font=font(s,b);return x.measureText(t).width/S};
@@ -197,22 +254,29 @@ function strip(d,n){
   rule(3,5);
   T(g(d.cs),88,true,'c');T(g(d.dep)+' → '+g(d.arr),38,true,'c');
   T(g(d.depI)+' → '+g(d.arrI)+'  FL'+g(d.fl),17,false,'c');
-  rule();
-  R(g(d.dep)+' RWY',g(d.rwyD));T(g(d.sid),40,true);
-  R(g(d.arr)+' RWY',g(d.rwyA));T(g(d.star),40,true);
-  rule();
-  const y0=y+2,h=60;x.lineWidth=3*S;x.strokeRect(M*S,y0*S,IW*S,h*S);
-  x.font=font(18,true);x.fillText('Block',(M+6)*S,(y0+8)*S);x.fillText('min',(M+6)*S,(y0+30)*S);
-  const b=g(d.block),bs=fit(b,64,true,IW-76);x.font=font(bs,true);x.fillText(b,(W-M-6-tw(b,bs,true))*S,(y0+(h-bs)/2)*S);y=y0+h+8;
-  R('Taxi',g(d.taxi));R('Trip',g(d.trip));
-  rule();T('ALTERNATI (kg)',16,true);
-  const al=d.alts||[];
-  al.forEach((a,i)=>R(a.icao+(i?'':' ★'),String(a.fuel)+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
-  rule();T('PESI t (max)',16,true);
-  const e=d.est||{},m=d.max||{};
-  [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>R(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
-  y+=10;x.font=font(18,false);x.fillText('Pax',M*S,y*S);x.fillRect((M+36)*S,(y+22)*S,(IW-36)*S,2*S);y+=32;
-  rule();T('OFP '+g(d.ofp),15,false,'c');y+=10;
+  if(O('flt'))R('Flight time',d.fltT?hm(d.fltT):'-');
+  if(O('times')){rule();[['Off',d.off],['T/O',d.air],['Ldg',d.ldg],['On',d.on]].forEach(([k,o])=>R(k,tz(o)||'-'))}
+  if(O('procs')){rule();R(g(d.dep)+' RWY',g(d.rwyD));T(g(d.sid),40,true);R(g(d.arr)+' RWY',g(d.rwyA));T(g(d.star),40,true)}
+  if(O('fuel')){
+    rule();
+    const y0=y+2,h=60;x.lineWidth=3*S;x.strokeRect(M*S,y0*S,IW*S,h*S);
+    x.font=font(18,true);x.fillText('Block',(M+6)*S,(y0+8)*S);x.fillText('min',(M+6)*S,(y0+30)*S);
+    const b=g(d.block),bs=fit(b,64,true,IW-76);x.font=font(bs,true);x.fillText(b,(W-M-6-tw(b,bs,true))*S,(y0+(h-bs)/2)*S);y=y0+h+8;
+    R('Taxi',g(d.taxi));R('Trip',g(d.trip));
+  }
+  if(O('alts')){
+    rule();T('ALTERNATES (kg)',16,true);
+    const al=d.alts||[];
+    al.forEach((a,i)=>R(a.icao+(i?'':' ★'),String(a.fuel)+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
+  }
+  if(O('wts')){
+    rule();T('WEIGHTS t (max)',16,true);
+    const e=d.est||{},m=d.max||{};
+    [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>R(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
+  }
+  if(O('pax')){y+=10;x.font=font(18,false);x.fillText('Pax',M*S,y*S);x.fillRect((M+36)*S,(y+22)*S,(IW-36)*S,2*S);y+=32}
+  if(O('notes')){rule();T('OFP '+g(d.ofp),15,false,'c')}
+  y+=10;
   for(let i=M;i<W-M;i+=14)x.fillRect(i*S,y*S,7*S,1.5*S);
   y+=14;
   const H=Math.ceil(y),o=document.createElement('canvas');o.width=W;o.height=H;
@@ -222,7 +286,7 @@ function strip(d,n){
   ox.putImageData(id,0,0);return o;
 }
 async function thermal(){
-  if(!LAST.length){$('msg').textContent='Carica prima i PDF LIDO.';return}
+  if(!LAST.length){$('msg').textContent='Load the LIDO PDFs first.';return}
   try{await document.fonts.load('700 20px "Barlow Condensed"');await document.fonts.load('500 20px "Barlow Condensed"')}catch(e){}
   const box=$('th');box.innerHTML='';
   const L=[...LAST].sort((a,b)=>(dkey(a.date)+((a.off&&a.off.z)||'')).localeCompare(dkey(b.date)+((b.off&&b.off.z)||'')));
@@ -232,10 +296,10 @@ async function thermal(){
   const bx=big.getContext('2d');bx.fillStyle='#fff';bx.fillRect(0,0,big.width,big.height);
   let yy=0;cs.forEach(c=>{bx.drawImage(c,0,yy);yy+=c.height});
   const blob=await new Promise(r=>big.toBlob(r,'image/png'));
-  const url=URL.createObjectURL(blob),name='strisce.png';
+  const url=URL.createObjectURL(blob),name='thermal-strip.png';
   const w=document.createElement('div');
-  w.innerHTML=`<p><b>${cs.length} voli</b> in un\'unica immagine · circa ${Math.round(big.height/8)} mm di carta</p><img src="${url}" alt="Striscia termica" style="width:280px;background:#fff;border:1px solid #888;display:block;margin:6px 0 10px">`;
-  const sh=document.createElement('button');sh.textContent='Condividi (Tinyprint)';
+  w.innerHTML=`<p><b>${cs.length} flights</b> in one image · about ${Math.round(big.height/8)} mm of paper</p><img src="${url}" alt="Thermal strip" style="width:280px;background:#fff;border:1px solid #888;display:block;margin:6px 0 10px">`;
+  const sh=document.createElement('button');sh.textContent='Share (Tinyprint)';
   sh.onclick=async()=>{const f=new File([blob],name,{type:'image/png'});try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else throw 0}catch(err){await saveFile(blob,name)}};
   w.appendChild(sh);box.appendChild(w);
   box.scrollIntoView();
@@ -247,15 +311,16 @@ async function saveFile(blob,name){
   const file=new File([blob],name,{type});
   try{const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()}catch(e){}
   const m=$('msg');
-  m.innerHTML='<b>File pronto:</b> '+esc(name)+' · <a href="'+url+'" download="'+esc(name)+'" style="color:inherit">Scarica di nuovo</a>';
+  m.innerHTML='<b>File ready:</b> '+esc(name)+' · <a href="'+url+'" download="'+esc(name)+'" style="color:inherit">Download again</a>';
   if(navigator.canShare&&navigator.canShare({files:[file]})){
-    const b=document.createElement('button');b.textContent='Condividi / Salva su File';b.style.marginLeft='8px';
+    const b=document.createElement('button');b.textContent='Share / Save to Files';b.style.marginLeft='8px';
     b.onclick=async()=>{try{await navigator.share({files:[file]})}catch(e){}};
     m.appendChild(b);
   }
 }
 function pdfCol(doc,x,top,w,d,n){
   if(!d)return;
+  const O=k=>on('a4',k);
   const pg=v=>v==null||v===''?'-':String(v);
   const p=2.5,L=x+p,R=x+w-p,C=(L+R)/2;let y=top+p;
   const t=(s,xx,yy,sz,b,al)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(sz);doc.text(String(s),xx,yy,{align:al||'left'})};
@@ -269,31 +334,45 @@ function pdfCol(doc,x,top,w,d,n){
   y+=10;fitT(pg(d.cs),C,y,25,true,'center');
   y+=6.5;fitT(pg(d.dep)+' > '+pg(d.arr),C,y,13,true,'center');
   y+=3.6;fitT(pg(d.depI)+' > '+pg(d.arrI)+'  FL'+pg(d.fl)+'  '+pg(d.reg),C,y,7,false,'center');
-  sec('ORARI');[['Off',d.off],['T/O',d.air],['Ldg',d.ldg],['On',d.on]].forEach(([k,o])=>row(k,o&&o.z?hm(o.z)+'Z/'+hm(o.l)+'L':'-'));
-  sec('PROCEDURE');
-  row(pg(d.dep)+' RWY',pg(d.rwyD));y+=4.6;fitT(pg(d.sid),L,y,13.5,true);
-  row(pg(d.arr)+' RWY',pg(d.rwyA));y+=4.6;fitT(pg(d.star),L,y,13.5,true);
-  sec('CARBURANTE (kg)');
-  y+=8.5;doc.setLineWidth(.35);doc.rect(L,y-7.5,R-L,9);
-  t('Block min',L+1.5,y-2,7,true);t(pg(d.block),R-1.5,y,21,true,'right');y+=1;
-  y+=3.2;gray(80);t('Block eff.',L,y,7.8,false);gray(0);ln(L+17,R,y+.5,.2);
-  row('Taxi',pg(d.taxi));row('Trip',pg(d.trip));
-  sec('ALTERNATI (fuel, diff.)');
-  const al=d.alts||[];
-  al.forEach((a,i)=>row(a.icao+(i?'':' *'),a.fuel+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
-  sec('PESI t (max)');
-  const e=d.est||{},m=d.max||{};
-  [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>row(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
-  y+=3.9;gray(80);t('Pax',L,y,7.8,false);gray(0);ln(L+9,R,y+.5,.2);
-  y+=3.6;gray(64);
-  if(d.tank)t(String(d.tank).slice(0,40),L,y,6,false);
-  if(d.next){y+=2.6;t('Poi '+d.next.fn+' STD '+hm(d.next.std)+'Z',L,y,6,false)}
-  if(d.ofp){y+=2.6;t('OFP '+d.ofp,L,y,6,false)}
-  gray(0);
+  if(O('times')||O('flt')){
+    sec('TIMES');
+    if(O('times'))[['Off',d.off],['T/O',d.air],['Ldg',d.ldg],['On',d.on]].forEach(([k,o])=>row(k,tz(o)||'-'));
+    if(O('flt'))row('Flight time',d.fltT?hm(d.fltT):'-');
+  }
+  if(O('procs')){
+    sec('PROCEDURES');
+    row(pg(d.dep)+' RWY',pg(d.rwyD));y+=4.6;fitT(pg(d.sid),L,y,13.5,true);
+    row(pg(d.arr)+' RWY',pg(d.rwyA));y+=4.6;fitT(pg(d.star),L,y,13.5,true);
+  }
+  if(O('fuel')||O('blockact')){
+    sec('FUEL (kg)');
+    if(O('fuel')){y+=8.5;doc.setLineWidth(.35);doc.rect(L,y-7.5,R-L,9);
+      t('Block min',L+1.5,y-2,7,true);t(pg(d.block),R-1.5,y,21,true,'right');y+=1}
+    if(O('blockact')){y+=3.2;gray(80);t('Block act.',L,y,7.8,false);gray(0);ln(L+17,R,y+.5,.2)}
+    if(O('fuel')){row('Taxi',pg(d.taxi));row('Trip',pg(d.trip))}
+  }
+  if(O('alts')){
+    sec('ALTERNATES (fuel, diff.)');
+    const al=d.alts||[];
+    al.forEach((a,i)=>row(a.icao+(i?'':' *'),a.fuel+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
+  }
+  if(O('wts')){
+    sec('WEIGHTS t (max)');
+    const e=d.est||{},m=d.max||{};
+    [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>row(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
+  }
+  if(O('pax')){y+=3.9;gray(80);t('Pax',L,y,7.8,false);gray(0);ln(L+9,R,y+.5,.2)}
+  if(O('notes')){
+    y+=3.6;gray(64);
+    if(d.tank)t(String(d.tank).slice(0,40),L,y,6,false);
+    if(d.next){y+=2.6;t('Next '+d.next.fn+' STD '+hm(d.next.std)+'Z',L,y,6,false)}
+    if(d.ofp){y+=2.6;t('OFP '+d.ofp,L,y,6,false)}
+    gray(0);
+  }
 }
 async function pdfSheet(){
-  if(!LAST.length){$('msg').textContent='Carica prima i PDF LIDO.';return}
-  if(!window.jspdf){$('msg').textContent='Libreria PDF non caricata: ricarica la pagina.';return}
+  if(!LAST.length){$('msg').textContent='Load the LIDO PDFs first.';return}
+  if(!window.jspdf){$('msg').textContent='PDF library not loaded: reload the page.';return}
   const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
   const g={};LAST.forEach(d=>(g[d.date]=g[d.date]||[]).push(d));
   const strips=[];
@@ -315,28 +394,36 @@ async function pdfSheet(){
   }
   const blob=doc.output('blob');
   $('th').innerHTML='';
-  await saveFile(blob,'foglio-volo.pdf');
+  await saveFile(blob,'flight-sheet.pdf');
 }
 
+const EF=[['cs','Callsign'],['fl','Cruise FL'],['rwyD','Dep RWY'],['sid','SID'],['rwyA','Arr RWY'],['star','STAR'],['block','Block min'],['taxi','Taxi'],['trip','Trip']];
+function buildEditor(){
+  const b=$('edit');
+  b.innerHTML=LAST.map((d,i)=>`<details class="card ed"><summary>Edit ${esc(d.fn||'?')} ${esc(d.dep||'')}→${esc(d.arr||'')}</summary><div class="eg">${EF.map(([k,l])=>`<label>${l}<input data-i="${i}" data-e="${k}" value="${esc(d[k]==null?'':d[k])}"></label>`).join('')}</div></details>`).join('');
+  b.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{LAST[+inp.dataset.i][inp.dataset.e]=inp.value;$('out').innerHTML=render(LAST)}));
+}
 async function load(files){
   if(!files.length)return;
-  if(typeof pdfjsLib==='undefined'){$('msg').textContent='Libreria PDF non caricata: controlla la connessione e ricarica la pagina.';return}
+  if(typeof pdfjsLib==='undefined'){$('msg').textContent='PDF library not loaded: check your connection and reload the page.';return}
   const out=[],errs=[];
-  $('msg').textContent='Leggo i PDF…';
+  $('msg').textContent='Reading PDFs…';
   for(const f of files){
     try{const d=parse(await readPdf(f));if(!d.cs&&!d.fn)throw new Error('formato non riconosciuto');out.push(d)}
     catch(e){errs.push(f.name+': '+e.message)}
   }
   out.sort((a,b)=>((a.off&&a.off.z)||'').localeCompare((b.off&&b.off.z)||''));
-  LAST=out;$('out').innerHTML=render(out);
-  $('msg').innerHTML=out.length?`<b>${out.length} voli pronti.</b> Controlla sempre i dati con l'OFP originale prima di usarli. ${errs.length?'<br>Errori: '+esc(errs.join('; ')):''}`:'Nessun volo letto. '+esc(errs.join('; '));
+  LAST=out;buildEditor();$('print').disabled=$('thermalBtn').disabled=!out.length;$('out').innerHTML=render(out);
+  $('msg').innerHTML=out.length?`<b>${out.length} flights ready</b><div class="chips">${out.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')}</div>Always check the data against the original OFP before use. ${errs.length?'<br>Errors: '+esc(errs.join('; ')):''}`:'No flights read. '+esc(errs.join('; '));
 }
 $('file').addEventListener('change',e=>{const f=[...e.target.files];e.target.value='';load(f)});
-window.addEventListener('error',e=>{$('msg').textContent='Errore: '+e.message});
+window.addEventListener('error',e=>{$('msg').textContent='Error: '+e.message});
+buildOpts();
 $('thermalBtn').addEventListener('click',thermal);
 $('print').addEventListener('click',pdfSheet);
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();load([...e.dataTransfer.files].filter(f=>/pdf$/i.test(f.name)))});
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 </script>
 </body>
 </html>
