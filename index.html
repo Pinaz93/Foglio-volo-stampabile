@@ -91,7 +91,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
-<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip</p></header>
+<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip · v1.0.2</p></header>
 <main class="panel">
  <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
  <details class="opts card"><summary>Options</summary><div id="optbox"></div></details>
@@ -104,6 +104,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
  <button id="clearBtn" type="button" class="clr" hidden>Clear saved flights</button>
  <div id="msg" class="card">Load one or more LIDO PDFs (all 4 flights at once is fine). Each day becomes half an A4 page with one column per flight: two days per sheet.</div>
 </main>
+<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.2 · 2026-10-06</p>
 <div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
 <div id="out"></div>
 
@@ -725,14 +726,22 @@ async function gmFetch(){
     await gmScript();const tok=await gmToken();
     const prof=await gmApi(tok,'profile');
     const t0=new Date();t0.setHours(0,0,0,0);
-    const q=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf after:'+Math.floor(t0.getTime()/1000));
+    const q=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf -in:trash -in:spam after:'+Math.floor(t0.getTime()/1000));
     const lst=await gmApi(tok,'messages?maxResults=25&q='+q);
     const all=lst.messages||[];
     let seen={};try{seen=JSON.parse(localStorage.getItem('fsmailseen')||'{}');if(Array.isArray(seen))seen={}}catch(e){}
     const have=new Set(LAST.map(fid));
     const todo=all.filter(m=>!(seen[m.id]&&seen[m.id].length&&seen[m.id].every(f=>have.has(f))));
     const who=prof.emailAddress||'?';
-    if(!all.length){$('msg').innerHTML='Signed in as <b>'+esc(who)+'</b>: no emails'+(GM.from?' from '+esc(GM.from):'')+' with a PDF today. Only today\'s emails are read. Check that this is the mailbox that receives the OFPs and the sender address (Options, Gmail). Leave Sender empty to search every PDF.';return}
+    if(!all.length){
+      let extra='';
+      try{const q2=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf newer_than:7d');
+        const l2=await gmApi(tok,'messages?maxResults=5&q='+q2);
+        if(l2.messages&&l2.messages.length){const mm=await gmApi(tok,'messages/'+l2.messages[0].id+'?format=metadata&metadataHeaders=Date');
+          const dh=((mm.payload&&mm.payload.headers)||[]).find(x=>x.name==='Date');
+          extra=' In the last 7 days there are '+l2.messages.length+(l2.messages.length>=5?'+':'')+' such emails; the latest is dated '+(dh?dh.value:'?')+' (labels: '+(mm.labelIds||[]).join(', ')+'; phone date: '+new Date().toString().slice(0,24)+').'}
+        else extra=' None in the last 7 days either.'}catch(e){}
+      $('msg').innerHTML='Signed in as <b>'+esc(who)+'</b>: no emails'+(GM.from?' from '+esc(GM.from):'')+' with a PDF today. Only today\'s emails are read. Check that this is the mailbox that receives the OFPs and the sender address (Options, Gmail). Leave Sender empty to search every PDF.'+esc(extra);return}
     const act=((GM.act==='trash'||GM.act==='delete')&&!GM.from)?'read':(GM.act||'keep');
     const done=all.filter(m=>todo.indexOf(m)<0).map(m=>m.id);
     let nPdf=0,okF=0;const errs=[];
@@ -740,6 +749,7 @@ async function gmFetch(){
     for(let i=0;i<todo.length;i++){
       $('msg').textContent='Downloading '+(i+1)+' of '+todo.length+'…';
       const m=await gmApi(tok,'messages/'+todo[i].id+'?format=full');
+      if((m.labelIds||[]).indexOf('TRASH')>=0||(m.labelIds||[]).indexOf('SPAM')>=0)continue;
       const files=[];
       for(const p of gmPdfParts(m.payload)){const a=await gmApi(tok,'messages/'+todo[i].id+'/attachments/'+p.id);files.push(new File([gmBytes(a.data)],p.name,{type:'application/pdf'}))}
       nPdf+=files.length;
@@ -752,7 +762,7 @@ async function gmFetch(){
     let acted=0,aerr='';
     if(act!=='keep'){
       for(const id of done){
-        try{if(act==='delete')await gmApi(tok,'messages/'+id,undefined,true);else if(act==='trash')await gmApi(tok,'messages/'+id+'/trash',{});else await gmApi(tok,'messages/'+id+'/modify',{removeLabelIds:['UNREAD']});acted++}
+        try{if(act==='delete')await gmApi(tok,'messages/'+id,undefined,true);else{await gmApi(tok,'messages/'+id+'/modify',{removeLabelIds:['UNREAD']});if(act==='trash')await gmApi(tok,'messages/'+id+'/trash',{})}acted++}
         catch(e){aerr=e.message;break}
       }
     }
