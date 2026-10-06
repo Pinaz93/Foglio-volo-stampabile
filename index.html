@@ -661,9 +661,9 @@ function buildEditor(){
   b.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{LAST[+inp.dataset.i][inp.dataset.e]=inp.value;$('out').innerHTML=render(LAST);saveFlights()}));
   b.querySelectorAll('[data-rm]').forEach(x=>x.addEventListener('click',()=>{LAST.splice(+x.dataset.rm,1);afterChange();$('msg').textContent=LAST.length?LAST.length+' flights saved.':'No flights saved.'}));
 }
-async function load(files){
-  if(!files.length)return;
-  if(typeof pdfjsLib==='undefined'){$('msg').textContent='PDF library not loaded: check your connection and reload the page.';return}
+async function load(files,extra){
+  if(!files.length)return {out:[],errs:[]};
+  if(typeof pdfjsLib==='undefined'){$('msg').textContent='PDF library not loaded: check your connection and reload the page.';return {out:[],errs:['pdf.js missing']}}
   const out=[],errs=[];
   $('msg').textContent='Reading PDFs…';
   for(const f of files){
@@ -675,6 +675,8 @@ async function load(files){
   all.sort((a,b)=>(dkey(a.date)+((a.off&&a.off.z)||'')).localeCompare(dkey(b.date)+((b.off&&b.off.z)||'')));
   LAST=all;afterChange();
   $('msg').innerHTML=out.length?`<b>${LAST.length} flights ready</b> (saved on this device)<div class="chips">${LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')}</div>Always check the data against the original OFP before use. ${errs.length?'<br>Errors: '+esc(errs.join('; ')):''}`:'No flights read. '+esc(errs.join('; '));
+  if(extra)$('msg').insertAdjacentHTML('beforeend','<br><span class="sm">'+esc(extra)+'</span>');
+  return {out,errs};
 }
 $('clearBtn').addEventListener('click',()=>{if(confirm('Delete all saved flights from this device?')){LAST=[];try{localStorage.removeItem('fsmailseen')}catch(e){}afterChange();$('msg').textContent='Saved flights cleared. Load new LIDO PDFs to start again.'}});
 try{const sv=JSON.parse(localStorage.getItem(FKEY)||'[]');if(Array.isArray(sv)&&sv.length){LAST=sv;wxRefresh();afterChange();$('msg').innerHTML='<b>'+LAST.length+' saved flights restored.</b> Load more PDFs to add to them, or clear them below.<div class="chips">'+LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')+'</div>'}}catch(e){}
@@ -690,8 +692,8 @@ const gmSave=()=>{try{localStorage.setItem('fsgm',JSON.stringify(GM))}catch(e){}
 function gmShow(){$('gmBtn').hidden=!GM.on}
 function gmUi(){
   const b=$('optbox');
-  b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>Look back (days)<input id="gmdays" type="number" inputmode="numeric" value="'+GM.days+'"></label><p class="sm">Read-only access to Gmail, used only to find the sender above and download the PDF attachments. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
-  const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim()||GMD.from;GM.days=Math.max(1,parseInt($('gmdays').value)||GMD.days);gmSave()};
+  b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender (empty = any sender)<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>Look back (days)<input id="gmdays" type="number" inputmode="numeric" value="'+GM.days+'"></label><p class="sm">Read-only access to Gmail, used only to find the sender above and download the PDF attachments. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
+  const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim();GM.days=Math.max(1,parseInt($('gmdays').value)||GMD.days);gmSave()};
   ['gmcid','gmfrom','gmdays'].forEach(i=>$(i).addEventListener('change',ch));
   const on=$('gmon');on.checked=!!GM.on;gmShow();on.addEventListener('change',()=>{GM.on=on.checked;gmSave();gmShow()});
 }
@@ -705,10 +707,10 @@ function gmToken(){return new Promise((ok,ko)=>{
 })}
 async function gmApi(tok,path){
   const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/'+path,{headers:{Authorization:'Bearer '+tok}});
-  if(!r.ok)throw new Error('Gmail '+r.status+(r.status===403?' (is the Gmail API enabled and you a test user?)':''));
+  if(!r.ok){let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||''}catch(e){}throw new Error('Gmail '+r.status+(msg?': '+msg.slice(0,220):'')+(r.status===403?' (check that the Gmail API is enabled in the same Google Cloud project as the client ID)':''))}
   return r.json();
 }
-function gmPdfParts(p,out=[]){if(!p)return out;if(p.filename&&/\.pdf$/i.test(p.filename)&&p.body&&p.body.attachmentId)out.push({name:p.filename,id:p.body.attachmentId});(p.parts||[]).forEach(x=>gmPdfParts(x,out));return out}
+function gmPdfParts(p,out=[]){if(!p)return out;if(p.body&&p.body.attachmentId&&((p.filename&&/\.pdf$/i.test(p.filename))||/pdf/i.test(p.mimeType||'')))out.push({name:p.filename||'attachment.pdf',id:p.body.attachmentId});(p.parts||[]).forEach(x=>gmPdfParts(x,out));return out}
 function gmBytes(b64u){const b=atob(b64u.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
 async function gmFetch(){
   if(!GM.cid){$('msg').textContent='Set your Google OAuth client ID first: Options, Gmail.';$('optbox').parentNode.open=true;return}
@@ -716,20 +718,31 @@ async function gmFetch(){
   try{
     $('msg').textContent='Connecting to Gmail…';
     await gmScript();const tok=await gmToken();
-    const q=encodeURIComponent('from:'+GM.from+' has:attachment filename:pdf newer_than:'+GM.days+'d');
+    const prof=await gmApi(tok,'profile');
+    const q=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf newer_than:'+GM.days+'d');
     const lst=await gmApi(tok,'messages?maxResults=25&q='+q);
-    let seen=[];try{seen=JSON.parse(localStorage.getItem('fsmailseen')||'[]')}catch(e){}
-    const ms=(lst.messages||[]).filter(m=>seen.indexOf(m.id)<0);
-    if(!ms.length){$('msg').textContent=(lst.messages||[]).length?'No new OFP emails (all already loaded). Clear saved flights to reload them.':'No OFP emails from '+GM.from+' in the last '+GM.days+' days.';return}
-    const files=[];
-    for(let i=0;i<ms.length;i++){
-      $('msg').textContent='Downloading '+(i+1)+' of '+ms.length+'…';
-      const m=await gmApi(tok,'messages/'+ms[i].id+'?format=full');
-      for(const p of gmPdfParts(m.payload)){const a=await gmApi(tok,'messages/'+ms[i].id+'/attachments/'+p.id);files.push(new File([gmBytes(a.data)],p.name,{type:'application/pdf'}))}
-      seen.push(ms[i].id);
+    const all=lst.messages||[];
+    let seen={};try{seen=JSON.parse(localStorage.getItem('fsmailseen')||'{}');if(Array.isArray(seen))seen={}}catch(e){}
+    const have=new Set(LAST.map(fid));
+    const todo=all.filter(m=>!(seen[m.id]&&seen[m.id].length&&seen[m.id].every(f=>have.has(f))));
+    const who=prof.emailAddress||'?';
+    if(!all.length){$('msg').innerHTML='Signed in as <b>'+esc(who)+'</b>: no emails'+(GM.from?' from '+esc(GM.from):'')+' with a PDF in the last '+GM.days+' days. Check that this is the mailbox that receives the OFPs, the sender address, and the number of days (Options, Gmail). Leave Sender empty to search every PDF.';return}
+    if(!todo.length){$('msg').textContent='Signed in as '+who+': '+all.length+' OFP emails found, all already loaded. Remove a flight or clear saved flights to reload.';return}
+    let nPdf=0,okF=0;const errs=[];
+    for(let i=0;i<todo.length;i++){
+      $('msg').textContent='Downloading '+(i+1)+' of '+todo.length+'…';
+      const m=await gmApi(tok,'messages/'+todo[i].id+'?format=full');
+      const files=[];
+      for(const p of gmPdfParts(m.payload)){const a=await gmApi(tok,'messages/'+todo[i].id+'/attachments/'+p.id);files.push(new File([gmBytes(a.data)],p.name,{type:'application/pdf'}))}
+      nPdf+=files.length;
+      if(!files.length)continue;
+      const res=await load(files);
+      okF+=res.out.length;res.errs.forEach(e=>errs.push(e));
+      if(res.out.length&&!res.errs.length){seen[todo[i].id]=res.out.map(fid)}
     }
-    await load(files);
-    try{localStorage.setItem('fsmailseen',JSON.stringify(seen.slice(-200)))}catch(e){}
+    try{localStorage.setItem('fsmailseen',JSON.stringify(seen))}catch(e){}
+    const sm='Gmail ('+who+'): '+all.length+' emails, '+nPdf+' PDFs, '+okF+' flights read'+(errs.length?'. Not read: '+errs.join('; '):'.');
+    $('msg').insertAdjacentHTML('beforeend','<br><span class="sm">'+esc(sm)+'</span>');
   }catch(e){$('msg').textContent='Gmail: '+e.message}
   finally{btn.disabled=false}
 }
