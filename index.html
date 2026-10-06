@@ -685,16 +685,21 @@ window.addEventListener('error',e=>{$('msg').textContent='Error: '+e.message});
 buildOpts();
 
 /*GMAIL*/
-const GMD={on:false,cid:'',from:'noreply@services.lhsystems.com',days:2};
+const GMD={on:false,cid:'',from:'noreply@services.lhsystems.com',act:'keep'};
 let GM=Object.assign({},GMD);
 try{Object.assign(GM,JSON.parse(localStorage.getItem('fsgm')||'{}'))}catch(e){}
 const gmSave=()=>{try{localStorage.setItem('fsgm',JSON.stringify(GM))}catch(e){}};
 function gmShow(){$('gmBtn').hidden=!GM.on}
 function gmUi(){
   const b=$('optbox');
-  b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender (empty = any sender)<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>Look back (days)<input id="gmdays" type="number" inputmode="numeric" value="'+GM.days+'"></label><p class="sm">Read-only access to Gmail, used only to find the sender above and download the PDF attachments. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
-  const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim();GM.days=Math.max(1,parseInt($('gmdays').value)||GMD.days);gmSave()};
-  ['gmcid','gmfrom','gmdays'].forEach(i=>$(i).addEventListener('change',ch));
+  b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender (empty = any sender)<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>After loading, the emails are<select id="gmact"><option value="keep">kept as unread</option><option value="read">marked as read</option><option value="trash">marked as read and moved to Trash</option><option value="delete">permanently deleted (cannot be undone)</option></select></label><p class="sm">Only today\'s emails are opened. Keeping them unread needs read-only access; the other two options ask Google for permission to modify emails. Trash is recoverable in Gmail for 30 days; permanent deletion is not, and asks Google for full mailbox access. Trash and deletion need a sender above. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
+  const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim();gmSave()};
+  ['gmcid','gmfrom'].forEach(i=>$(i).addEventListener('change',ch));
+  {const sa=$('gmact');sa.value=GM.act||'keep';sa.addEventListener('change',()=>{
+    if((sa.value==='trash'||sa.value==='delete')&&!GM.from){alert('Set a sender first: removing emails without a sender filter could remove other emails.');sa.value=GM.act||'keep';return}
+    if(sa.value==='delete'&&!confirm('After loading, today\'s OFP emails from this sender will be PERMANENTLY deleted from Gmail. This cannot be undone. Continue?')){sa.value=GM.act||'keep';return}
+    if(sa.value==='trash'&&!confirm('After loading, today\'s OFP emails will be moved to the Gmail Trash (recoverable for 30 days). Continue?')){sa.value=GM.act||'keep';return}
+    GM.act=sa.value;gmSave()})}
   const on=$('gmon');on.checked=!!GM.on;gmShow();on.addEventListener('change',()=>{GM.on=on.checked;gmSave();gmShow()});
 }
 function gmScript(){return new Promise((ok,ko)=>{
@@ -702,13 +707,13 @@ function gmScript(){return new Promise((ok,ko)=>{
   const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.onload=()=>ok();sc.onerror=()=>ko(new Error('Cannot reach Google: check your connection'));document.head.appendChild(sc);
 })}
 function gmToken(){return new Promise((ok,ko)=>{
-  const tc=google.accounts.oauth2.initTokenClient({client_id:GM.cid,scope:'https://www.googleapis.com/auth/gmail.readonly',callback:r=>r&&r.access_token?ok(r.access_token):ko(new Error((r&&r.error)||'Sign-in cancelled')),error_callback:e=>ko(new Error((e&&e.type)||'Sign-in cancelled'))});
+  const tc=google.accounts.oauth2.initTokenClient({client_id:GM.cid,scope:GM.act==='delete'?'https://mail.google.com/':'https://www.googleapis.com/auth/gmail.'+((GM.act==='read'||GM.act==='trash')?'modify':'readonly'),callback:r=>r&&r.access_token?ok(r.access_token):ko(new Error((r&&r.error)||'Sign-in cancelled')),error_callback:e=>ko(new Error((e&&e.type)||'Sign-in cancelled'))});
   tc.requestAccessToken({prompt:''});
 })}
-async function gmApi(tok,path){
-  const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/'+path,{headers:{Authorization:'Bearer '+tok}});
+async function gmApi(tok,path,body,del){
+  const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/'+path,del?{method:'DELETE',headers:{Authorization:'Bearer '+tok}}:body===undefined?{headers:{Authorization:'Bearer '+tok}}:{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(!r.ok){let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||''}catch(e){}throw new Error('Gmail '+r.status+(msg?': '+msg.slice(0,220):'')+(r.status===403?' (check that the Gmail API is enabled in the same Google Cloud project as the client ID)':''))}
-  return r.json();
+  return del?{}:r.json();
 }
 function gmPdfParts(p,out=[]){if(!p)return out;if(p.body&&p.body.attachmentId&&((p.filename&&/\.pdf$/i.test(p.filename))||/pdf/i.test(p.mimeType||'')))out.push({name:p.filename||'attachment.pdf',id:p.body.attachmentId});(p.parts||[]).forEach(x=>gmPdfParts(x,out));return out}
 function gmBytes(b64u){const b=atob(b64u.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
@@ -719,16 +724,19 @@ async function gmFetch(){
     $('msg').textContent='Connecting to Gmail…';
     await gmScript();const tok=await gmToken();
     const prof=await gmApi(tok,'profile');
-    const q=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf newer_than:'+GM.days+'d');
+    const t0=new Date();t0.setHours(0,0,0,0);
+    const q=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf after:'+Math.floor(t0.getTime()/1000));
     const lst=await gmApi(tok,'messages?maxResults=25&q='+q);
     const all=lst.messages||[];
     let seen={};try{seen=JSON.parse(localStorage.getItem('fsmailseen')||'{}');if(Array.isArray(seen))seen={}}catch(e){}
     const have=new Set(LAST.map(fid));
     const todo=all.filter(m=>!(seen[m.id]&&seen[m.id].length&&seen[m.id].every(f=>have.has(f))));
     const who=prof.emailAddress||'?';
-    if(!all.length){$('msg').innerHTML='Signed in as <b>'+esc(who)+'</b>: no emails'+(GM.from?' from '+esc(GM.from):'')+' with a PDF in the last '+GM.days+' days. Check that this is the mailbox that receives the OFPs, the sender address, and the number of days (Options, Gmail). Leave Sender empty to search every PDF.';return}
-    if(!todo.length){$('msg').textContent='Signed in as '+who+': '+all.length+' OFP emails found, all already loaded. Remove a flight or clear saved flights to reload.';return}
+    if(!all.length){$('msg').innerHTML='Signed in as <b>'+esc(who)+'</b>: no emails'+(GM.from?' from '+esc(GM.from):'')+' with a PDF today. Only today\'s emails are read. Check that this is the mailbox that receives the OFPs and the sender address (Options, Gmail). Leave Sender empty to search every PDF.';return}
+    const act=((GM.act==='trash'||GM.act==='delete')&&!GM.from)?'read':(GM.act||'keep');
+    const done=all.filter(m=>todo.indexOf(m)<0).map(m=>m.id);
     let nPdf=0,okF=0;const errs=[];
+    if(!todo.length)$('msg').textContent='Signed in as '+who+': '+all.length+' OFP emails today, all already loaded.';
     for(let i=0;i<todo.length;i++){
       $('msg').textContent='Downloading '+(i+1)+' of '+todo.length+'…';
       const m=await gmApi(tok,'messages/'+todo[i].id+'?format=full');
@@ -738,10 +746,17 @@ async function gmFetch(){
       if(!files.length)continue;
       const res=await load(files);
       okF+=res.out.length;res.errs.forEach(e=>errs.push(e));
-      if(res.out.length&&!res.errs.length){seen[todo[i].id]=res.out.map(fid)}
+      if(res.out.length&&!res.errs.length){seen[todo[i].id]=res.out.map(fid);done.push(todo[i].id)}
     }
     try{localStorage.setItem('fsmailseen',JSON.stringify(seen))}catch(e){}
-    const sm='Gmail ('+who+'): '+all.length+' emails, '+nPdf+' PDFs, '+okF+' flights read'+(errs.length?'. Not read: '+errs.join('; '):'.');
+    let acted=0,aerr='';
+    if(act!=='keep'){
+      for(const id of done){
+        try{if(act==='delete')await gmApi(tok,'messages/'+id,undefined,true);else if(act==='trash')await gmApi(tok,'messages/'+id+'/trash',{});else await gmApi(tok,'messages/'+id+'/modify',{removeLabelIds:['UNREAD']});acted++}
+        catch(e){aerr=e.message;break}
+      }
+    }
+    const sm='Gmail ('+who+'): '+all.length+' emails today, '+nPdf+' PDFs, '+okF+' flights read'+(errs.length?'. Not read: '+errs.join('; '):'')+(act==='keep'?'. Emails left unread.':'. '+acted+' emails '+(act==='delete'?'permanently deleted.':act==='trash'?'moved to Trash.':'marked as read.'))+(aerr?' Could not update emails: '+aerr:'')+((GM.act==='trash'||GM.act==='delete')&&!GM.from?' (Removal skipped: no sender set.)':'');
     $('msg').insertAdjacentHTML('beforeend','<br><span class="sm">'+esc(sm)+'</span>');
   }catch(e){$('msg').textContent='Gmail: '+e.message}
   finally{btn.disabled=false}
