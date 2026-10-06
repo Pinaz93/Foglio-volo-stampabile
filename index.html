@@ -41,7 +41,7 @@ button,.pick{font:600 15px Barlow,sans-serif;background:var(--btn);color:var(--b
 .row b{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
 .row em{font-style:normal;color:#555;font-weight:400}
 .proc{font:700 15pt/1.1 'Barlow Condensed',sans-serif}
-.blk{background:#f6c945;border-radius:3px;padding:2px 5px;margin:2px 0 3px;display:flex;justify-content:space-between;align-items:baseline}
+.blk{background:#fff;border:2px solid #12161c;border-radius:3px;padding:2px 5px;margin:2px 0 3px;display:flex;justify-content:space-between;align-items:baseline}
 .blk small{font-size:8pt;font-weight:600}.blk span{font:700 24pt/1 'Barlow Condensed',sans-serif}
 .sm{font-size:7.5pt;color:#444}
 input.f{font:700 14pt/1 'Barlow Condensed',sans-serif;width:20mm;border:0;border-bottom:1.5px solid #12161c;background:transparent;color:#12161c;text-align:center;border-radius:0;padding:0}
@@ -83,6 +83,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ed summary{cursor:pointer;font-weight:600}.eg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.eg label{display:flex;flex-direction:column;font-size:12px;color:var(--mut)}.eg input{font:600 16px Barlow,sans-serif;padding:6px;border:1px solid var(--mut);border-radius:6px;background:var(--bg);color:var(--fg)}
 #edit{display:grid;gap:10px}
 @media print{#edit{display:none}}
+.wxm{font-weight:700;margin-left:2px}.wx-ok{color:#1a7f37}.wx-warn{color:#b26a00}.wx-bad{color:#b3261e}.wx-na{color:#777}.wxr{font-style:normal;font-size:10px;color:#555;font-weight:400}.thr summary{cursor:pointer;font-weight:600;margin-top:8px}.thr button{margin-top:8px}
 </style>
 </head>
 <body>
@@ -123,6 +124,147 @@ async function readPdf(file){
   return out;
 }
 
+/*WX*/
+const WXDEF={okCeil:1500,okVis:5000,badCeil:500,badVis:1500,wMean:20,wGust:0};
+const WXMON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function parseWx(T){
+  const out={},L=T.split('\n').map(s=>s.trim());
+  const i=L.findIndex(l=>/^DESTINATION ALTERNATE:/.test(l));
+  if(i<0)return out;
+  let cur=null,mode=null;
+  for(let k=i+1;k<L.length;k++){
+    const l=L[k];
+    if(/^(ENROUTE AIRPORT|Space Weather|AIRPORTLIST|TAKE-?OFF ALTERNATE|DEPARTURE AIRPORT|DESTINATION AIRPORT)/i.test(l))break;
+    if(!l||/^Page \d+ of \d+/.test(l)||/^FR \d+\/\S+\/.*OFP:\d+/.test(l))continue;
+    const m=l.match(/^([A-Z]{4})\/([A-Z]{3})\b/);
+    if(m){cur=out[m[1]]={sa:'',ft:''};mode=null;continue}
+    if(!cur)continue;
+    if(/^SA\b/.test(l)){mode='sa';cur.sa=l.replace(/^SA\s*/,'');continue}
+    if(/^FT\b/.test(l)){mode='ft';cur.ft=l.replace(/^FT\s*/,'');continue}
+    if(mode==='ft'&&!/=\s*$/.test(cur.ft))cur.ft+=' '+l;
+    else if(mode==='sa'&&!/=\s*$/.test(cur.sa))cur.sa+=' '+l;
+  }
+  return out;
+}
+function wxDate(ref,dd,hh,mm){
+  let best=null;
+  for(const o of [-1,0,1]){const t=Date.UTC(ref.getUTCFullYear(),ref.getUTCMonth()+o,dd,hh,mm||0);
+    if(best===null||Math.abs(t-ref.getTime())<Math.abs(best-ref.getTime()))best=t}
+  return best;
+}
+function wxEl(tk){
+  const e={};
+  for(const w of tk){
+    let m;
+    if(w==='CAVOK'){e.cav=true;e.vis=9999;e.ceil=Infinity;e.ts=false;e.cb=false;e.tcu=false;e.cloud=true;e.wx=true;continue}
+    if(m=w.match(/^(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)$/)){const k=m[4]==='MPS'?1.944:1;e.spd=Math.round(+m[2]*k);e.gust=m[3]?Math.round(+m[3]*k):0;continue}
+    if(/^\d{4}$/.test(w)){e.vis=+w;continue}
+    if(m=w.match(/^(FEW|SCT|BKN|OVC)(\d{3}|\/\/\/)(CB|TCU)?$/)){
+      if(!e.cloud){e.cloud=true;e.ceil=Infinity;e.cb=false;e.tcu=false}
+      if(m[3]==='CB')e.cb=true; if(m[3]==='TCU')e.tcu=true;
+      if((m[1]==='BKN'||m[1]==='OVC')&&m[2]!=='///')e.ceil=Math.min(e.ceil,+m[2]*100);
+      continue}
+    if(m=w.match(/^VV(\d{3}|\/\/\/)$/)){if(!e.cloud){e.cloud=true;e.ceil=Infinity;e.cb=false;e.tcu=false}e.ceil=Math.min(e.ceil,m[1]==='///'?0:+m[1]*100);continue}
+    if(/^(NSC|NCD|SKC|CLR)$/.test(w)){e.cloud=true;e.ceil=Infinity;e.cb=false;e.tcu=false;continue}
+    if(w==='NSW'){e.wx=true;e.ts=false;e.sh=false;e.persist=false;continue}
+    if(/^[-+]?([A-Z]{2})+$/.test(w)){
+      const c=w.replace(/^[-+]/,'').match(/.{2}/g)||[];
+      const known=['TS','SH','RA','DZ','SN','SG','PL','GR','GS','UP','BR','FG','FU','VA','DU','SA','HZ','PY','PO','SQ','FC','SS','DS','VC','MI','BC','PR','DR','BL','FZ'];
+      if(!c.every(x=>known.includes(x)))continue;
+      if(!e.wx){e.wx=true;e.ts=false;e.sh=false;e.persist=false}
+      if(c.includes('TS'))e.ts=true;
+      if(c.includes('SH'))e.sh=true;
+      if(c.some(x=>['BR','FG','HZ','FU','DU','SA','VA','SS','DS','FC'].includes(x)))e.persist=true;
+      if(!c.includes('SH')&&!c.includes('TS')&&c.some(x=>['RA','DZ','SN','SG','PL'].includes(x)))e.persist=true;
+    }
+  }
+  return e;
+}
+function wxMerge(a,e,full){
+  const s=full?{spd:0,gust:0,vis:9999,ceil:Infinity,ts:false,cb:false,tcu:false}:Object.assign({},a);
+  if(e.spd!==undefined){s.spd=e.spd;s.gust=e.gust}
+  if(e.vis!==undefined)s.vis=e.vis;
+  if(e.ceil!==undefined)s.ceil=e.ceil;
+  if(e.cloud){s.cb=!!e.cb;s.tcu=!!e.tcu}
+  if(e.wx)s.ts=!!e.ts;
+  return s;
+}
+const wxWorst=(a,b)=>({spd:Math.max(a.spd,b.spd),gust:Math.max(a.gust,b.gust),vis:Math.min(a.vis,b.vis),ceil:Math.min(a.ceil,b.ceil),ts:a.ts||b.ts,cb:a.cb||b.cb,tcu:a.tcu||b.tcu});
+function tafBuild(ft,ref){
+  const tk=ft.replace(/=/g,' ').trim().split(/\s+/).filter(Boolean);
+  let i=0;
+  if(/^(TAF|AMD|COR)$/.test(tk[i]))i++;
+  if(/^\d{6}$/.test(tk[i]))i++;
+  const v=tk[i]&&tk[i].match(/^(\d{2})(\d{2})\/(\d{2})(\d{2})$/);
+  if(!v)return null;
+  i++;
+  const vf=wxDate(ref,+v[1],+v[2]),vt=wxDate(ref,+v[3],+v[4]);
+  const G=[];let cur={t:'BASE',tk:[]};G.push(cur);
+  for(;i<tk.length;i++){
+    const w=tk[i];let m;
+    if(w==='BECMG'||w==='TEMPO'||/^PROB\d{2}$/.test(w)){
+      let t=w==='BECMG'?'BECMG':w==='TEMPO'?'TEMPO':'PROB';
+      if(t==='PROB'&&tk[i+1]==='TEMPO'){t='PROBTEMPO';i++}
+      cur={t,tk:[]};G.push(cur);
+      const p=tk[i+1]&&tk[i+1].match(/^(\d{2})(\d{2})\/(\d{2})(\d{2})$/);
+      if(p){cur.from=wxDate(ref,+p[1],+p[2]);cur.to=wxDate(ref,+p[3],+p[4]);i++}
+      continue}
+    if(m=w.match(/^FM(\d{2})(\d{2})(\d{2})$/)){cur={t:'FM',tk:[],from:wxDate(ref,+m[1],+m[2],+m[3])};G.push(cur);continue}
+    cur.tk.push(w);
+  }
+  const seg=[],ov=[];
+  let st=wxMerge(null,wxEl(G[0].tk),true),from=vf;
+  for(const g of G.slice(1)){
+    const e=wxEl(g.tk);
+    if(g.t==='FM'){seg.push({from,to:g.from,s:st});st=wxMerge(null,e,true);from=g.from}
+    else if(g.t==='BECMG'&&g.from!=null){
+      const ns=wxMerge(st,e,false);
+      seg.push({from,to:g.from,s:st});seg.push({from:g.from,to:g.to,s:wxWorst(st,ns)});
+      st=ns;from=g.to}
+    else if(g.from!=null){ov.push({t:g.t,from:g.from,to:g.to,e,s:wxMerge(st,e,false)})}
+  }
+  seg.push({from,to:vt,s:st});
+  return {vf,vt,seg,ov};
+}
+function wxEta(d,a){
+  const m=(d.date||'').match(/^(\d{2})([A-Z]{3})(\d{4})$/);
+  if(!m||!d.ldg||!d.ldg.z||!a.time)return null;
+  let t=Date.UTC(+m[3],WXMON.indexOf(m[2]),+m[1])+(+d.ldg.z.slice(0,2)*60+ +d.ldg.z.slice(2))*60000;
+  if(d.off&&d.off.z&&d.ldg.z<d.off.z)t+=864e5;
+  return t+(+a.time.slice(0,2)*60+ +a.time.slice(2))*60000;
+}
+function wxAlt(d,a){
+  try{
+    const W=(typeof WXT!=='undefined')?WXT:WXDEF;
+    const raw=d.wxRaw&&d.wxRaw[a.icao];
+    if(!raw||!/\d{4}\/\d{4}/.test(raw.ft||''))return {s:'na',r:'no TAF'};
+    const eta=wxEta(d,a);if(eta==null)return {s:'na',r:'no ETA'};
+    const TF=tafBuild(raw.ft,new Date(eta));if(!TF)return {s:'na',r:'TAF unreadable'};
+    const w0=eta-36e5,w1=eta+36e5;
+    if(w1<=TF.vf||w0>=TF.vt)return {s:'na',r:'outside TAF'};
+    let vis=9999,ceil=Infinity,spd=0,gust=0,ts=false,cb=false,tsMaybe=false,tsTxt='';
+    const hh=t=>new Date(t).toISOString().slice(11,13)+'Z';
+    for(const x of TF.seg){if(x.to>w0&&x.from<w1){vis=Math.min(vis,x.s.vis);ceil=Math.min(ceil,x.s.ceil);spd=Math.max(spd,x.s.spd);gust=Math.max(gust,x.s.gust);ts=ts||x.s.ts;cb=cb||x.s.cb||x.s.tcu}}
+    for(const o of TF.ov){
+      if(!(o.to>w0&&o.from<w1))continue;
+      const e=o.e,transient=!!(e.ts||e.sh)&&!e.persist;
+      if(e.ts||e.cb){tsMaybe=true;tsTxt=o.t==='TEMPO'?'TS TEMPO':'TS PROB'}
+      if(o.t!=='PROBTEMPO'&&!transient){if(e.vis!==undefined)vis=Math.min(vis,e.vis);if(e.ceil!==undefined)ceil=Math.min(ceil,e.ceil)}
+      if(e.spd!==undefined){spd=Math.max(spd,e.spd);gust=Math.max(gust,e.gust)}
+    }
+    const bad=[],warn=[];
+    if(ceil<W.badCeil)bad.push('ceil '+ceil);else if(ceil<W.okCeil)warn.push('ceil '+ceil);
+    if(vis<W.badVis)bad.push('vis '+vis);else if(vis<W.okVis)warn.push('vis '+vis);
+    if(ts)bad.push('TS');else if(cb)warn.push('CB');
+    if(tsMaybe&&!ts)warn.push(tsTxt);
+    if(spd>=W.wMean||(gust>0&&gust>=W.wGust))warn.push('wind '+spd+(gust?'G'+gust:''));
+    if(bad.length)return {s:'bad',r:bad.concat(warn).slice(0,3).join(', ')};
+    if(warn.length)return {s:'warn',r:warn.slice(0,3).join(', ')};
+    return {s:'ok',r:''};
+  }catch(err){return {s:'na',r:'error'}}
+}
+/*ENDWX*/
+
 function parse(raw){
   const T=raw.replace(/[ \t]+/g,' ');
   const m=(re,i=1)=>{const r=T.match(re);return r?r[i]:null};
@@ -131,7 +273,7 @@ function parse(raw){
   if(h){d.fn=h[1].replace(/\s/g,'');d.date=h[2];d.dep=h[3];d.arr=h[4];d.type=h[5];d.reg=h[6]}
   const c=T.match(/C\/S\s+(\w+)\s+(\w{4})\/(\w{3})\s+(\w{4})\/(\w{3})/);
   if(c){d.cs=c[1];d.depI=c[3];d.arrI=c[5];d.dep=d.dep||c[2];d.arr=d.arr||c[4]}
-  d.ci=m(/CI\s+(\d+)/);
+  d.ci=m(/CI\s+(\d+)/);d.ofp=m(/OFP:(\d+\/\d+\/\d+)/);
   {const fsm=T.match(/\b[A-Z]{4}\/(0\d{3}\/(?:[A-Z0-9_]+\/)*[A-Z0-9_]*)/);
     if(fsm){const lv=[];for(const t of fsm[1].split('/')){if(t==='T_O_D')break;if(/^0\d{3}$/.test(t)&&+t>=200)lv.push(+t)}
       if(lv.length){const mx=Math.max(...lv);d.fl=lv[0]===mx?String(lv[0]):lv[0]+'>'+mx}}}
@@ -166,6 +308,8 @@ function parse(raw){
   if(nx)d.next={fn:nx[1].replace(/\s/g,''),from:nx[2],rwy:nx[3],to:nx[4],std:nx[6],alt:nx[7]};
   d.alts=[];const re=/^\s*C(\d)\s+([A-Z]{4})\s+(\d{3})\s+(\d{3})\s+.*?\s(\d{3})\s+(\d{1,3})\s+[MP]\d{3}\s+(\d{4})\s+(\d{3,5})\s*$/gm;
   let a;while((a=re.exec(T))){d.alts.push({icao:a[2],trk:a[3],dist:a[4],fl:a[5],time:a[7],fuel:+a[8]})}
+  d.wxRaw=parseWx(T);d.wxTime=m(/LIDO\/WEATHER SERVICE\s+DATE\s*:\s*\S+\s+TIME\s*:\s*(\d{2}:\d{2})/);
+  d.alts.forEach(a=>{a.wx=WXON?wxAlt(d,a):null});
   return d;
 }
 
@@ -178,7 +322,7 @@ const tz=t=>{if(!t||!t.z)return null;const z=hm(t.z)+'Z',l=hm(t.l)+'L';return OP
 function col(d,n){
   if(!d)return '<div class="col"></div>';
   const main=d.alts[0];
-  const alts=d.alts.map((a,i)=>`<div class="row"><span>${a.icao}${i?'':' ★'}</span><b>${a.fuel}${i?` <em>${a.fuel-main.fuel>=0?'+':''}${a.fuel-main.fuel}</em>`:''}</b></div>`).join('')||'<div class="sm">Not found</div>';
+  const alts=d.alts.map((a,i)=>`<div class="row"><span>${a.icao}${i?'':' ★'}${wxMk(a)}</span><b>${a.fuel}${i?` <em>${a.fuel-main.fuel>=0?'+':''}${a.fuel-main.fuel}</em>`:''}</b></div>`).join('')||'<div class="sm">Not found</div>';
   const dt=d.date?d.date.replace(/(\d{2})([A-Z]{3})\d{4}/,'$1 $2'):'—';
   return `<div class="col">
   <div class="hd"><span class="leg">${n}°</span><span>${v(d.fn)}</span><span>${dt}</span></div>
@@ -191,10 +335,10 @@ function col(d,n){
   <div class="sec" data-k="fuel"><h3>Fuel (kg)</h3>
    <div class="blk"><small>Block min</small><span>${v(d.block)}</span></div>
    <div class="row" data-k="blockact"><span>Block act.</span><input class="f" inputmode="numeric" placeholder="____"></div>
-   ${row('Taxi',d.taxi)}${row('Trip',d.trip)}${row('Cont',d.cont)}${row('Altn',d.altn)}${row('FinRes',d.finres)}${row('T/O fuel',d.toFuel)}</div>
-  <div class="sec" data-k="alts"><h3>Alternates (fuel · Δ)</h3>${alts}</div>
+   ${row('Taxi',d.taxi)}${row('Trip',d.trip)}</div>
+  <div class="sec" data-k="alts"><h3>Alternates (fuel · Δ)</h3>${alts}${(WXON&&d.wxTime)?`<div class="sm" data-k="wx">wx as of ${d.wxTime}Z</div>`:''}</div>
   <div class="sec"><h3 data-k="wts">Weights t (max)</h3>${wt('TOW',d.est&&d.est.tow,d.max&&d.max.tow)}${wt('LW',d.est&&d.est.lw,d.max&&d.max.lw)}${wt('ZFW',d.est&&d.est.zfw,d.max&&d.max.zfw)}
-   <div class="row" data-k="pax"><span>Pax</span><input class="f" inputmode="numeric" placeholder="___"></div></div>
+   <div class="row" data-k="pax"><span>Pax</span><input class="f" readonly value="${esc(d.pax||'')}" placeholder="___"></div></div>
   <div class="sm" data-k="notes" style="margin-top:3px">${v(d.tank)}${d.disp&&d.disp!=='NIL'?'<br>DISP: '+esc(d.disp):''}${d.next?`<br>Next ${esc(d.next.fn)} STD ${hm(d.next.std)}Z`:''}</div>
   </div>`;
 }
@@ -211,11 +355,17 @@ function render(list){
   return h;
 }
 
-const KEYS=[['times','Times (off, T/O, ldg, on)'],['flt','Flight time'],['procs','Procedures (RWY, SID, STAR)'],['fuel','Fuel (block, taxi, trip)'],['blockact','Block actual line'],['alts','Alternates'],['wts','Weights'],['pax','Pax line'],['notes','Notes (tankering, next, OFP no.)']];
+const KEYS=[['times','Times (off, T/O, ldg, on)'],['flt','Flight time'],['procs','Procedures (RWY, SID, STAR)'],['fuel','Fuel (block, taxi, trip)'],['blockact','Block actual line'],['alts','Alternates'],['wx','Alternates weather check'],['wts','Weights'],['pax','Pax line'],['notes','Notes (tankering, next, OFP no.)']];
 const DEF={a4:{},th:{times:false,blockact:false}};
-let OPT={a4:{},th:{},tf:'both'};
+let OPT={a4:{},th:{},tf:'both',wx:{}};
 const saveOpt=()=>{try{localStorage.setItem('fsopt',JSON.stringify(OPT))}catch(e){}};
-try{const o=JSON.parse(localStorage.getItem('fsopt')||'{}');OPT={a4:o.a4||{},th:o.th||{},tf:o.tf||'both'}}catch(e){}
+try{const o=JSON.parse(localStorage.getItem('fsopt')||'{}');OPT={a4:o.a4||{},th:o.th||{},tf:o.tf||'both',wx:o.wx||{},wxOn:o.wxOn}}catch(e){}
+let WXON=OPT.wxOn!==false;
+let WXT=Object.assign({},WXDEF,OPT.wx);
+const WXF=[['okCeil','OK if ceiling at least (ft)'],['okVis','OK if visibility at least (m)'],['badCeil','Not OK if ceiling below (ft)'],['badVis','Not OK if visibility below (m)'],['wMean','Wind alert: mean wind from (kt)'],['wGust','Gust alert: gust from (kt), 0 = any gust']];
+const WXS={ok:['✓','wx-ok'],warn:['!','wx-warn'],bad:['✗','wx-bad'],na:['?','wx-na']};
+function wxMk(a){if(!a.wx)return '';const k=WXS[a.wx.s];return ` <b class="wxm ${k[1]}" data-k="wx" title="${esc(a.wx.r)}">${k[0]}</b>`+((a.wx.s==='warn'||a.wx.s==='bad')&&a.wx.r?`<em class="wxr" data-k="wx"> ${esc(a.wx.r)}</em>`:'')}
+function wxRefresh(){LAST.forEach(d=>d.alts.forEach(a=>{a.wx=WXON?wxAlt(d,a):null}))}
 const on=(f,k)=>OPT[f][k]!==undefined?OPT[f][k]:DEF[f][k]!==false;
 function optCss(){
   const css=KEYS.filter(([k])=>!on('a4',k)).map(([k])=>`.col [data-k="${k}"]{display:none}`).join('');
@@ -233,10 +383,22 @@ function buildOpts(){
   b.insertAdjacentHTML('beforeend','<div class="tfr"><span>Times shown as</span><select id="tf"><option value="both">Z / local</option><option value="z">Z only</option><option value="l">Local only</option></select></div>');
   const tf=b.querySelector('#tf');tf.value=OPT.tf;
   tf.addEventListener('change',()=>{OPT.tf=tf.value;saveOpt();if(LAST.length)$('out').innerHTML=render(LAST)});
+  b.insertAdjacentHTML('beforeend','<details class="thr"><summary>Weather check</summary><label class="sm"><input type="checkbox" id="wxon"> Enable alternates weather check</label><div class="eg">'+WXF.map(([k,l])=>`<label>${l}<input type="number" inputmode="numeric" data-w="${k}" value="${WXT[k]}"></label>`).join('')+'</div><button type="button" id="wxreset">Reset defaults</button><p class="sm">Planning aid only: ✓ means clearly above any plausible planning minima, ! means check minima, wind or TS, ✗ means below the lowest plausible minima, ? means no usable TAF. Final decision with FD PRO and the OM.</p></details>');
+  const wchg=()=>{WXT=Object.assign({},WXDEF,OPT.wx);saveOpt();wxRefresh();if(LAST.length)$('out').innerHTML=render(LAST)};
+  b.querySelectorAll('input[data-w]').forEach(i=>i.addEventListener('change',()=>{const v=parseFloat(i.value);if(isFinite(v))OPT.wx[i.dataset.w]=v;wchg()}));
+  const wo=b.querySelector('#wxon');wo.checked=WXON;wo.addEventListener('change',()=>{WXON=wo.checked;OPT.wxOn=WXON;wchg()});
+  b.querySelector('#wxreset').addEventListener('click',()=>{OPT.wx={};b.querySelectorAll('input[data-w]').forEach(i=>{i.value=WXDEF[i.dataset.w]});wchg()});
   optCss();
 }
 
 var LAST=[];
+function wxMark(x,mx,cy,st,S){
+  x.save();x.strokeStyle='#000';x.fillStyle='#000';x.lineWidth=3.2*S;x.lineCap='round';x.lineJoin='round';
+  if(st==='ok'){x.beginPath();x.moveTo(mx*S,cy*S);x.lineTo((mx+5)*S,(cy+6)*S);x.lineTo((mx+16)*S,(cy-9)*S);x.stroke()}
+  else if(st==='bad'){x.beginPath();x.moveTo(mx*S,(cy-8)*S);x.lineTo((mx+14)*S,(cy+6)*S);x.moveTo((mx+14)*S,(cy-8)*S);x.lineTo(mx*S,(cy+6)*S);x.stroke()}
+  else{x.font=`700 ${28*S}px "Barlow Condensed","Arial Narrow",sans-serif`;x.textBaseline='middle';x.fillText(st==='warn'?'!':'?',mx*S,cy*S)}
+  x.restore();
+}
 function strip(d,n){
   const S=4,W=280,M=6,IW=W-2*M,F='"Barlow Condensed","Arial Narrow",sans-serif',O=k=>on('th',k);
   const c=document.createElement('canvas');c.width=W*S;c.height=1800*S;
@@ -267,14 +429,22 @@ function strip(d,n){
   if(O('alts')){
     rule();T('ALTERNATES (kg)',16,true);
     const al=d.alts||[];
-    al.forEach((a,i)=>R(a.icao+(i?'':' ★'),String(a.fuel)+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
+    al.forEach((a,i)=>{
+      const y0=y,lab=a.icao+(i?'':' ★');
+      R(lab,String(a.fuel)+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):''));
+      if(O('wx')&&a.wx){
+        wxMark(x,M+tw(lab,19,false)+8,y0+14,a.wx.s,S);
+        if((a.wx.s==='warn'||a.wx.s==='bad')&&a.wx.r)T(a.wx.r,15,false);
+      }
+    });
+    if(WXON&&O('wx')&&d.wxTime)T('wx as of '+d.wxTime+'Z',13,false,'r');
   }
   if(O('wts')){
     rule();T('WEIGHTS t (max)',16,true);
     const e=d.est||{},m=d.max||{};
     [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>R(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
   }
-  if(O('pax')){y+=10;x.font=font(18,false);x.fillText('Pax',M*S,y*S);x.fillRect((M+36)*S,(y+22)*S,(IW-36)*S,2*S);y+=32}
+  if(O('pax')){y+=10;x.font=font(18,false);x.fillText('Pax',M*S,y*S);x.fillRect((M+36)*S,(y+22)*S,(IW-36)*S,2*S);if(d.pax){x.font=font(26,true);x.fillText(String(d.pax),(M+44)*S,(y-2)*S)}y+=32}
   if(O('notes')){rule();T('OFP '+g(d.ofp),15,false,'c')}
   y+=10;
   for(let i=M;i<W-M;i+=14)x.fillRect(i*S,y*S,7*S,1.5*S);
@@ -299,7 +469,7 @@ async function thermal(){
   const url=URL.createObjectURL(blob),name='thermal-strip.png';
   const w=document.createElement('div');
   w.innerHTML=`<p><b>${cs.length} flights</b> in one image · about ${Math.round(big.height/8)} mm of paper</p><img src="${url}" alt="Thermal strip" style="width:280px;background:#fff;border:1px solid #888;display:block;margin:6px 0 10px">`;
-  const sh=document.createElement('button');sh.textContent='Share (Tinyprint)';
+  const sh=document.createElement('button');sh.textContent='Share';
   sh.onclick=async()=>{const f=new File([blob],name,{type:'image/png'});try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else throw 0}catch(err){await saveFile(blob,name)}};
   w.appendChild(sh);box.appendChild(w);
   box.scrollIntoView();
@@ -318,9 +488,16 @@ async function saveFile(blob,name){
     m.appendChild(b);
   }
 }
+function wxDraw(doc,x,y,st){
+  const cy=y-.8;
+  doc.setDrawColor(0);doc.setTextColor(0);doc.setLineWidth(.5);
+  if(st==='ok'){doc.line(x,cy,x+.9,cy+1);doc.line(x+.9,cy+1,x+2.6,cy-1.6)}
+  else if(st==='bad'){doc.line(x,cy-1.1,x+2.3,cy+1.1);doc.line(x,cy+1.1,x+2.3,cy-1.1)}
+  else{doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(st==='warn'?'!':'?',x,y+.2)}
+}
 function pdfCol(doc,x,top,w,d,n){
   if(!d)return;
-  const O=k=>on('a4',k);
+  const O=k=>on('a4',k),sh0=148.5;
   const pg=v=>v==null||v===''?'-':String(v);
   const p=2.5,L=x+p,R=x+w-p,C=(L+R)/2;let y=top+p;
   const t=(s,xx,yy,sz,b,al)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(sz);doc.text(String(s),xx,yy,{align:al||'left'})};
@@ -353,15 +530,24 @@ function pdfCol(doc,x,top,w,d,n){
   }
   if(O('alts')){
     sec('ALTERNATES (fuel, diff.)');
+    if(WXON&&O('wx')&&d.wxTime){gray(90);t('wx '+d.wxTime+'Z',R,y,6,false,'right');gray(0)}
     const al=d.alts||[];
-    al.forEach((a,i)=>row(a.icao+(i?'':' *'),a.fuel+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):'')));
+    al.forEach((a,i)=>{
+      const lab=a.icao+(i?'':' *');
+      row(lab,a.fuel+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):''));
+      if(O('wx')&&a.wx){
+        doc.setFont('helvetica','normal');doc.setFontSize(7.8);
+        wxDraw(doc,L+doc.getTextWidth(lab)+2.2,y,a.wx.s);
+        if((a.wx.s==='warn'||a.wx.s==='bad')&&a.wx.r&&y<top+sh0-12){y+=2.4;gray(60);t(a.wx.r,L+1,y,6,false);gray(0)}
+      }
+    });
   }
   if(O('wts')){
     sec('WEIGHTS t (max)');
     const e=d.est||{},m=d.max||{};
     [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>row(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
   }
-  if(O('pax')){y+=3.9;gray(80);t('Pax',L,y,7.8,false);gray(0);ln(L+9,R,y+.5,.2)}
+  if(O('pax')){y+=3.9;gray(80);t('Pax',L,y,7.8,false);gray(0);ln(L+9,R,y+.5,.2);if(d.pax)t(String(d.pax),L+11,y-.2,11,true)}
   if(O('notes')){
     y+=3.6;gray(64);
     if(d.tank)t(String(d.tank).slice(0,40),L,y,6,false);
@@ -397,7 +583,7 @@ async function pdfSheet(){
   await saveFile(blob,'flight-sheet.pdf');
 }
 
-const EF=[['cs','Callsign'],['fl','Cruise FL'],['rwyD','Dep RWY'],['sid','SID'],['rwyA','Arr RWY'],['star','STAR'],['block','Block min'],['taxi','Taxi'],['trip','Trip']];
+const EF=[['cs','Callsign'],['fl','Cruise FL'],['rwyD','Dep RWY'],['sid','SID'],['rwyA','Arr RWY'],['star','STAR'],['block','Block min'],['taxi','Taxi'],['trip','Trip'],['pax','Pax']];
 function buildEditor(){
   const b=$('edit');
   b.innerHTML=LAST.map((d,i)=>`<details class="card ed"><summary>Edit ${esc(d.fn||'?')} ${esc(d.dep||'')}→${esc(d.arr||'')}</summary><div class="eg">${EF.map(([k,l])=>`<label>${l}<input data-i="${i}" data-e="${k}" value="${esc(d[k]==null?'':d[k])}"></label>`).join('')}</div></details>`).join('');
