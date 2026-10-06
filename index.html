@@ -87,7 +87,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .ed summary{cursor:pointer;font-weight:600}.eg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.eg label{display:flex;flex-direction:column;font-size:12px;color:var(--mut)}.eg input{font:600 16px Barlow,sans-serif;padding:6px;border:1px solid var(--mut);border-radius:6px;background:var(--bg);color:var(--fg)}
 #edit{display:grid;gap:10px}
 @media print{#edit{display:none}}
-.wxm{font-weight:700;margin-left:2px}.wx-ok{color:#1a7f37}.wx-warn{color:#b26a00}.wx-bad{color:#b3261e}.wx-na{color:#777}.wxr{font-style:normal;font-size:10px;color:#555;font-weight:400}.clr{background:transparent;color:var(--fg);border:1px solid var(--mut);font-size:14px;padding:8px 12px;border-radius:8px;justify-self:start}.rm{margin-top:8px;background:transparent;color:#b3261e;border:1px solid #b3261e;font-size:13px;padding:6px 10px;border-radius:8px}.thr summary{cursor:pointer;font-weight:600;margin-top:8px}.thr button{margin-top:8px}
+.wxm{font-weight:700;margin-left:2px}.wx-ok{color:#1a7f37}.wx-warn{color:#b26a00}.wx-bad{color:#b3261e}.wx-na{color:#777}.wxr{font-style:normal;font-size:10px;color:#555;font-weight:400}.gm{display:flex;flex-direction:column;align-items:center;gap:2px;padding:11px 8px;font-size:16px;border-radius:10px;background:transparent;color:var(--fg);border:2px solid var(--btn)}.gm small{font-weight:400;font-size:12px;opacity:.8}.gmx label{display:block;margin-top:6px}.gmx input{width:100%}.gmx input[type=checkbox]{width:auto;margin-right:6px}.gm[hidden]{display:none}.clr{background:transparent;color:var(--fg);border:1px solid var(--mut);font-size:14px;padding:8px 12px;border-radius:8px;justify-self:start}.rm{margin-top:8px;background:transparent;color:#b3261e;border:1px solid #b3261e;font-size:13px;padding:6px 10px;border-radius:8px}.thr summary{cursor:pointer;font-weight:600;margin-top:8px}.thr button{margin-top:8px}
 </style>
 </head>
 <body>
@@ -95,6 +95,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <main class="panel">
  <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
  <details class="opts card"><summary>Options</summary><div id="optbox"></div></details>
+ <button id="gmBtn" type="button" class="alt gm">Fetch OFPs from Gmail<small>needs a one-time setup in Options</small></button>
  <div id="edit"></div>
  <div class="acts">
   <button id="print" type="button" disabled>Download A4 PDF<small>2 days per sheet</small></button>
@@ -139,8 +140,8 @@ function parseWx(T){
   let cur=null,mode=null;
   for(let k=i+1;k<L.length;k++){
     const l=L[k];
-    if(/^(ENROUTE AIRPORT|Space Weather|AIRPORTLIST|TAKE-?OFF ALTERNATE|DEPARTURE AIRPORT|DESTINATION AIRPORT)/i.test(l))break;
-    if(!l||/^Page \d+ of \d+/.test(l)||/^FR \d+\/\S+\/.*OFP:\d+/.test(l))continue;
+    if(/^(ENROUTE AIRPORT|Space Weather|AIRPORTLIST|TAKE-?OFF ALTERNATE|DEPARTURE AIRPORT|DESTINATION AIRPORT|FUEL ENROUTE|ADEQUATE ENROUTE)/i.test(l))break;
+    if(!l||/^Page \d+ of \d+/.test(l)||/^(FR|DLA) \d+\/\S+\/.*OFP:\d+/.test(l))continue;
     const m=l.match(/^([A-Z]{4})\/([A-Z]{3})\b/);
     if(m){cur=out[m[1]]={sa:'',ft:''};mode=null;continue}
     if(!cur)continue;
@@ -270,8 +271,64 @@ function wxAlt(d,a){
 }
 /*ENDWX*/
 
+
+/*DLA*/
+const TZP={ED:'Europe/Berlin',ET:'Europe/Berlin',LI:'Europe/Rome',LF:'Europe/Paris',LE:'Europe/Madrid',EG:'Europe/London',EI:'Europe/Dublin',EH:'Europe/Amsterdam',EB:'Europe/Brussels',EL:'Europe/Luxembourg',LS:'Europe/Zurich',LO:'Europe/Vienna',EK:'Europe/Copenhagen',EN:'Europe/Oslo',ES:'Europe/Stockholm',EF:'Europe/Helsinki',LP:'Europe/Lisbon',LG:'Europe/Athens',LK:'Europe/Prague',EP:'Europe/Warsaw',LH:'Europe/Budapest',LR:'Europe/Bucharest',LB:'Europe/Sofia',LZ:'Europe/Bratislava',LJ:'Europe/Ljubljana',LD:'Europe/Zagreb',LM:'Europe/Malta',LC:'Asia/Nicosia',EV:'Europe/Riga',EY:'Europe/Vilnius',EE:'Europe/Tallinn',BI:'Atlantic/Reykjavik',LA:'Europe/Tirane',LW:'Europe/Skopje',LY:'Europe/Belgrade',LQ:'Europe/Sarajevo',LU:'Europe/Chisinau',LT:'Europe/Istanbul'};
+function tzLocal(icao,date,hhmm){
+  try{const tzn=TZP[(icao||'').slice(0,2)];if(!tzn||!hhmm)return null;
+    const mi=MONS.indexOf(date.slice(2,5).toUpperCase());if(mi<0)return null;
+    const u=Date.UTC(+date.slice(5),mi,+date.slice(0,2),+hhmm.slice(0,2),+hhmm.slice(2));
+    const p=new Intl.DateTimeFormat('en-GB',{timeZone:tzn,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(u));
+    return p.find(x=>x.type==='hour').value+p.find(x=>x.type==='minute').value}catch(e){return null}
+}
+const MONS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const addHM=(t,mn)=>{const x=((+t.slice(0,2))*60+(+t.slice(2))+mn)%1440;return String(Math.floor(x/60)).padStart(2,'0')+String(x%60).padStart(2,'0')};
+function parseDla(T){
+  const m=(re,i=1)=>{const r=T.match(re);return r?r[i]:null};
+  const d={};
+  const h=T.match(/DLA\s+(\d+)\/(\d{2})([A-Za-z]{3})(\d{2})\/([A-Z]{4})-([A-Z]{4})\s+Reg:(\w+)\s+OFP:(\d+\/\d+\/\d+)/);
+  d.fn='EN'+h[1];d.date=h[2]+h[3].toUpperCase()+'20'+h[4];d.dep=h[5];d.arr=h[6];d.reg=h[7];d.ofp=h[8];d.airline='DLA';
+  d.type=m(/\n\s*([A-Z]{3})\s+\d{3}-\d{3}/)||'';
+  const ic=T.match(new RegExp(d.dep+'/\\s*([A-Z]{3})\\s+'+d.arr+'/\\s*([A-Z]{3})'));if(ic){d.depI=ic[1];d.arrI=ic[2]}
+  const hd=T.match(/ATC\s+(\w+)\s+(\d{4})\/(\d{4})\s+(\d{4})\/(\d{4})/);
+  const tin=+(m(/TAXI IN (\d+)/)||0);
+  if(hd){d.cs=hd[1];
+    const L=(icao,t)=>({z:t,l:tzLocal(icao,d.date,t)||''});
+    d.off=L(d.dep,hd[2]);d.air=L(d.dep,hd[3]);
+    const ld=hd[4];d.ldg=L(d.arr,ld);d.on=L(d.arr,addHM(ld,tin));
+  }
+  d.fl=m(/N\d{4}F(\d{3})/);
+  d.ci=m(/COST INDEX\s+(\d+)/);
+  d.avgFF=m(/AVGE FF\s+(\d+)/);d.avgW=m(/AVGE WIND\s+(\d+\/\d+)/);
+  const rw=n=>{const r=T.match(new RegExp('\\b'+n+'/(\\d{2}[LRC]?)\\b'));return r?r[1]:null};
+  d.rwyD=rw(d.dep);d.rwyA=rw(d.arr);
+  {const a=T.indexOf('TIME AWY'),b=T.indexOf('DESTINATION ALTERNATE INFORMATION');
+    if(a>=0&&b>a){const P=T.slice(a,b),toc=P.search(/T O C/);const isP=s=>/^[A-Z]{3,5}\d[A-Z]$/.test(s);
+      const tk=P.split(/\s+/).filter(isP);
+      const pre=toc>=0?P.slice(0,toc).split(/\s+/).filter(isP):[],post=toc>=0?P.slice(toc).split(/\s+/).filter(isP):tk;
+      d.sid=pre.length?pre[0]:'DCT (no SID)';d.star=post.length?post[post.length-1]:'DCT (no STAR)'}}
+  // weights: PLN row = planned, MAL row = maximum LW/TOW; max ZFW from the load sheet if present
+  {const est=T.match(/PLN\s+(\d+)\s+(\d+)\s+\w+\s+PLN\s+(\d+)\s+(\d+)/),mx=T.match(/EST\s+\d+\s+\d+\s+\w+\s+MAL\s+(\d+)\s+(\d+)/),mz=T.match(/ZFW\s+\d+\s+MAX\s+(\d+)/);
+    if(est){d.est={zfw:+est[2]/1000,lw:+est[3]/1000,tow:+est[4]/1000};d.max={zfw:mz?+mz[1]/1000:null,lw:mx?+mx[1]/1000:null,tow:mx?+mx[2]/1000:null}}}
+  const hmm=s=>s?s.replace('.',''):null;
+  d.trip=m(/\nTRIP\s+(\d+)\s+\d\d\.\d\d/);d.fltT=hmm(m(/\nTRIP\s+\d+\s+(\d\d\.\d\d)/));
+  d.cont=m(/MINCONT\s+(\d+)/);d.altn=m(/\nALTN\s+(\d+)\s+\d\d\.\d\d/);d.finres=m(/FINAL RES\s+(\d+)/);
+  d.toFuel=m(/PLNTOF\s+(\d+)/);d.taxi=m(/\nTAXI\s+(?:\.+\s+)?(\d+)\//);
+  d.block=m(/\nBLOCK\s+(\d{3,5})\b/);
+  d.tank=m(/\n([^\n]*TANKERING[^\n]*)/);
+  d.alts=[];
+  {const a=T.match(/\n([A-Z]{4})\/\d+\s+(\d+)\s+(\d+)\s+[HP]\d{3}\s+(\d{4})\s+(\d{3,5})\s/);
+    if(a)d.alts.push({icao:a[1],dist:a[2],fl:a[3],time:a[4],fuel:+a[5]});
+    const re=/INFO\s*-\s*([A-Z]{4})\/\d+\s+(\d+)\s+(\d+)\s+[HP]\d{3}\s+(\d{4})\s*(\d{3,5})/g;let x;
+    while((x=re.exec(T)))d.alts.push({icao:x[1],dist:x[2],fl:x[3],time:x[4],fuel:+x[5]})}
+  d.wxRaw=parseWx(T);d.wxTime=m(/LIDO\/WEATHER SERVICE\s+DATE\s*:\s*\S+\s+TIME\s*:\s*(\d{2}:\d{2})/);
+  d.alts.forEach(a=>{a.wx=WXON?wxAlt(d,a):null});
+  return d;
+}
+/*ENDDLA*/
 function parse(raw){
   const T=raw.replace(/[ \t]+/g,' ');
+  if(/\bDLA \d+\/\d{2}[A-Za-z]{3}\d{2}\/[A-Z]{4}-[A-Z]{4}/.test(T))return parseDla(T);
   const m=(re,i=1)=>{const r=T.match(re);return r?r[i]:null};
   const d={};
   const h=T.match(/(FR\s?\d{1,4})\s+(\d{2}[A-Z]{3}\d{4})\s+([A-Z]{4})-([A-Z]{4})\s+(\w{4})\s+(\w+)\s+RELEASE/);
@@ -322,6 +379,9 @@ const row=(k,val,u='',dk='')=>`<div class="row" data-k="${dk}"><span>${k}</span>
 const wt=(k,e,mx)=>`<div class="row" data-k="wts"><span>${k}</span><b class="${e&&mx&&e>mx?'warn':''}">${e?e.toFixed(1):'—'} <em>(${mx?mx.toFixed(1):'—'})</em></b></div>`;
 const MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const dkey=s=>s?s.slice(5)+String(MON.indexOf(s.slice(2,5))+1).padStart(2,'0')+s.slice(0,2):'';
+const bkc=d=>!d.block&&OPT.blk!==false&&d.toFuel&&d.taxi;
+const bk=d=>d.block?d.block:(bkc(d)?String((+d.toFuel)+(+d.taxi)):null);
+const bkl=d=>bkc(d)?'Block min (calc)':'Block min';
 const tz=t=>{if(!t||!t.z)return null;const z=hm(t.z)+'Z',l=hm(t.l)+'L';return OPT.tf==='z'?z:OPT.tf==='l'?l:z+'/'+l};
 
 function col(d,n){
@@ -338,7 +398,7 @@ function col(d,n){
    <div class="row"><span>${v(d.dep)} RWY</span><b>${v(d.rwyD)}</b></div><div class="proc">${v(d.sid)}</div>
    <div class="row"><span>${v(d.arr)} RWY</span><b>${v(d.rwyA)}</b></div><div class="proc">${v(d.star)}</div></div>
   <div class="sec" data-k="fuel"><h3>Fuel (kg)</h3>
-   <div class="blk"><small>Block min</small><span>${v(d.block)}</span></div>
+   <div class="blk"><small>${bkl(d)}</small><span>${v(bk(d))}</span></div>
    <div class="row" data-k="blockact"><span>Block act.</span><input class="f" inputmode="numeric" placeholder="____"></div>
    ${row('Taxi',d.taxi)}${row('Trip',d.trip)}</div>
   <div class="sec" data-k="alts"><h3>Alternates (fuel · Δ)</h3>${alts}${(WXON&&d.wxTime)?`<div class="sm" data-k="wx">wx as of ${d.wxTime}Z</div>`:''}</div>
@@ -364,7 +424,7 @@ const KEYS=[['times','Times (off, T/O, ldg, on)'],['flt','Flight time'],['procs'
 const DEF={a4:{},th:{times:false,blockact:false}};
 let OPT={a4:{},th:{},tf:'both',wx:{}};
 const saveOpt=()=>{try{localStorage.setItem('fsopt',JSON.stringify(OPT))}catch(e){}};
-try{const o=JSON.parse(localStorage.getItem('fsopt')||'{}');OPT={a4:o.a4||{},th:o.th||{},tf:o.tf||'both',wx:o.wx||{},wxOn:o.wxOn}}catch(e){}
+try{const o=JSON.parse(localStorage.getItem('fsopt')||'{}');OPT={a4:o.a4||{},th:o.th||{},tf:o.tf||'both',wx:o.wx||{},wxOn:o.wxOn,blk:o.blk}}catch(e){}
 let WXON=OPT.wxOn!==false;
 let WXT=Object.assign({},WXDEF,OPT.wx);
 const WXF=[['okCeil','OK if ceiling at least (ft)'],['okVis','OK if visibility at least (m)'],['badCeil','Not OK if ceiling below (ft)'],['badVis','Not OK if visibility below (m)'],['wMean','Wind alert: mean wind from (kt)'],['wGust','Gust alert: gust from (kt), 0 = any gust']];
@@ -388,6 +448,8 @@ function buildOpts(){
   b.insertAdjacentHTML('beforeend','<div class="tfr"><span>Times shown as</span><select id="tf"><option value="both">Z / local</option><option value="z">Z only</option><option value="l">Local only</option></select></div>');
   const tf=b.querySelector('#tf');tf.value=OPT.tf;
   tf.addEventListener('change',()=>{OPT.tf=tf.value;saveOpt();if(LAST.length)$('out').innerHTML=render(LAST)});
+  b.insertAdjacentHTML('beforeend','<div class="tfr"><label class="sm"><input type="checkbox" id="blkc"> If block fuel is missing, use takeoff fuel + taxi (marked "calc")</label></div>');
+  {const bc=b.querySelector('#blkc');bc.checked=OPT.blk!==false;bc.addEventListener('change',()=>{OPT.blk=bc.checked;saveOpt();buildEditor();if(LAST.length)$('out').innerHTML=render(LAST)})}
   b.insertAdjacentHTML('beforeend','<details class="thr"><summary>Weather check</summary><label class="sm"><input type="checkbox" id="wxon"> Enable alternates weather check</label><div class="eg">'+WXF.map(([k,l])=>`<label>${l}<input type="number" inputmode="numeric" data-w="${k}" value="${WXT[k]}"></label>`).join('')+'</div><button type="button" id="wxreset">Reset defaults</button><p class="sm">Planning aid only. Defaults: ✓ at ceiling ≥ 1000 ft and vis ≥ 5000 m (VMC), ✗ below 400 ft / 1350 m (CAT I 200 ft / 550 m + OM-A alternate margin 200 ft / 800 m), ! in between. ✓ means clearly above any plausible planning minima, ! means check minima, wind or TS, ✗ means below the lowest plausible minima, ? means no usable TAF. Final decision with FD PRO and the OM.</p></details>');
   const wchg=()=>{WXT=Object.assign({},WXDEF,OPT.wx);saveOpt();wxRefresh();if(LAST.length)$('out').innerHTML=render(LAST)};
   b.querySelectorAll('input[data-w]').forEach(i=>i.addEventListener('change',()=>{const v=parseFloat(i.value);if(isFinite(v))OPT.wx[i.dataset.w]=v;wchg()}));
@@ -427,8 +489,8 @@ function strip(d,n){
   if(O('fuel')){
     rule();
     const y0=y+2,h=60;x.lineWidth=3*S;x.strokeRect(M*S,y0*S,IW*S,h*S);
-    x.font=font(18,true);x.fillText('Block',(M+6)*S,(y0+8)*S);x.fillText('min',(M+6)*S,(y0+30)*S);
-    const b=g(d.block),bs=fit(b,64,true,IW-76);x.font=font(bs,true);x.fillText(b,(W-M-6-tw(b,bs,true))*S,(y0+(h-bs)/2)*S);y=y0+h+8;
+    x.font=font(18,true);x.fillText('Block',(M+6)*S,(y0+6)*S);x.fillText('min',(M+6)*S,(y0+26)*S);if(bkc(d)){x.font=font(13,true);x.fillText('calc',(M+6)*S,(y0+46)*S)}
+    const b=g(bk(d)),bs=fit(b,64,true,IW-76);x.font=font(bs,true);x.fillText(b,(W-M-6-tw(b,bs,true))*S,(y0+(h-bs)/2)*S);y=y0+h+8;
     R('Taxi',g(d.taxi));R('Trip',g(d.trip));
   }
   if(O('alts')){
@@ -529,7 +591,7 @@ function pdfCol(doc,x,top,w,d,n){
   if(O('fuel')||O('blockact')){
     sec('FUEL (kg)');
     if(O('fuel')){y+=8.5;doc.setLineWidth(.35);doc.rect(L,y-7.5,R-L,9);
-      t('Block min',L+1.5,y-2,7,true);t(pg(d.block),R-1.5,y,21,true,'right');y+=1}
+      t(bkl(d),L+1.5,y-2,7,true);t(pg(bk(d)),R-1.5,y,21,true,'right');y+=1}
     if(O('blockact')){y+=3.2;gray(80);t('Block act.',L,y,7.8,false);gray(0);ln(L+17,R,y+.5,.2)}
     if(O('fuel')){row('Taxi',pg(d.taxi));row('Trip',pg(d.trip))}
   }
@@ -595,7 +657,7 @@ function fid(d){return [d.fn,d.date,d.dep,d.arr].join('|')}
 function afterChange(){buildEditor();$('print').disabled=$('thermalBtn').disabled=!LAST.length;$('out').innerHTML=LAST.length?render(LAST):'';saveFlights()}
 function buildEditor(){
   const b=$('edit');
-  b.innerHTML=LAST.map((d,i)=>`<details class="card ed"><summary>Edit ${esc(d.fn||'?')} ${esc(d.dep||'')}→${esc(d.arr||'')}</summary><div class="eg">${EF.map(([k,l])=>`<label>${l}<input data-i="${i}" data-e="${k}" value="${esc(d[k]==null?'':d[k])}"></label>`).join('')}<button type="button" class="rm" data-rm="${i}">Remove this flight</button></details>`).join('');
+  b.innerHTML=LAST.map((d,i)=>`<details class="card ed"><summary>Edit ${esc(d.fn||'?')} ${esc(d.dep||'')}→${esc(d.arr||'')}</summary><div class="eg">${EF.map(([k,l])=>`<label>${l}<input data-i="${i}" data-e="${k}" value="${esc(k==='block'?(bk(d)||''):(d[k]==null?'':d[k]))}"></label>`).join('')}<button type="button" class="rm" data-rm="${i}">Remove this flight</button></details>`).join('');
   b.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{LAST[+inp.dataset.i][inp.dataset.e]=inp.value;$('out').innerHTML=render(LAST);saveFlights()}));
   b.querySelectorAll('[data-rm]').forEach(x=>x.addEventListener('click',()=>{LAST.splice(+x.dataset.rm,1);afterChange();$('msg').textContent=LAST.length?LAST.length+' flights saved.':'No flights saved.'}));
 }
@@ -614,11 +676,66 @@ async function load(files){
   LAST=all;afterChange();
   $('msg').innerHTML=out.length?`<b>${LAST.length} flights ready</b> (saved on this device)<div class="chips">${LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')}</div>Always check the data against the original OFP before use. ${errs.length?'<br>Errors: '+esc(errs.join('; ')):''}`:'No flights read. '+esc(errs.join('; '));
 }
-$('clearBtn').addEventListener('click',()=>{if(confirm('Delete all saved flights from this device?')){LAST=[];afterChange();$('msg').textContent='Saved flights cleared. Load new LIDO PDFs to start again.'}});
+$('clearBtn').addEventListener('click',()=>{if(confirm('Delete all saved flights from this device?')){LAST=[];try{localStorage.removeItem('fsmailseen')}catch(e){}afterChange();$('msg').textContent='Saved flights cleared. Load new LIDO PDFs to start again.'}});
 try{const sv=JSON.parse(localStorage.getItem(FKEY)||'[]');if(Array.isArray(sv)&&sv.length){LAST=sv;wxRefresh();afterChange();$('msg').innerHTML='<b>'+LAST.length+' saved flights restored.</b> Load more PDFs to add to them, or clear them below.<div class="chips">'+LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')+'</div>'}}catch(e){}
 $('file').addEventListener('change',e=>{const f=[...e.target.files];e.target.value='';load(f)});
 window.addEventListener('error',e=>{$('msg').textContent='Error: '+e.message});
 buildOpts();
+
+/*GMAIL*/
+const GMD={on:false,cid:'',from:'noreply@services.lhsystems.com',days:2};
+let GM=Object.assign({},GMD);
+try{Object.assign(GM,JSON.parse(localStorage.getItem('fsgm')||'{}'))}catch(e){}
+const gmSave=()=>{try{localStorage.setItem('fsgm',JSON.stringify(GM))}catch(e){}};
+function gmShow(){$('gmBtn').hidden=!GM.on}
+function gmUi(){
+  const b=$('optbox');
+  b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>Look back (days)<input id="gmdays" type="number" inputmode="numeric" value="'+GM.days+'"></label><p class="sm">Read-only access to Gmail, used only to find the sender above and download the PDF attachments. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
+  const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim()||GMD.from;GM.days=Math.max(1,parseInt($('gmdays').value)||GMD.days);gmSave()};
+  ['gmcid','gmfrom','gmdays'].forEach(i=>$(i).addEventListener('change',ch));
+  const on=$('gmon');on.checked=!!GM.on;gmShow();on.addEventListener('change',()=>{GM.on=on.checked;gmSave();gmShow()});
+}
+function gmScript(){return new Promise((ok,ko)=>{
+  if(window.google&&google.accounts&&google.accounts.oauth2)return ok();
+  const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.onload=()=>ok();sc.onerror=()=>ko(new Error('Cannot reach Google: check your connection'));document.head.appendChild(sc);
+})}
+function gmToken(){return new Promise((ok,ko)=>{
+  const tc=google.accounts.oauth2.initTokenClient({client_id:GM.cid,scope:'https://www.googleapis.com/auth/gmail.readonly',callback:r=>r&&r.access_token?ok(r.access_token):ko(new Error((r&&r.error)||'Sign-in cancelled')),error_callback:e=>ko(new Error((e&&e.type)||'Sign-in cancelled'))});
+  tc.requestAccessToken({prompt:''});
+})}
+async function gmApi(tok,path){
+  const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/'+path,{headers:{Authorization:'Bearer '+tok}});
+  if(!r.ok)throw new Error('Gmail '+r.status+(r.status===403?' (is the Gmail API enabled and you a test user?)':''));
+  return r.json();
+}
+function gmPdfParts(p,out=[]){if(!p)return out;if(p.filename&&/\.pdf$/i.test(p.filename)&&p.body&&p.body.attachmentId)out.push({name:p.filename,id:p.body.attachmentId});(p.parts||[]).forEach(x=>gmPdfParts(x,out));return out}
+function gmBytes(b64u){const b=atob(b64u.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+async function gmFetch(){
+  if(!GM.cid){$('msg').textContent='Set your Google OAuth client ID first: Options, Gmail.';$('optbox').parentNode.open=true;return}
+  const btn=$('gmBtn');btn.disabled=true;
+  try{
+    $('msg').textContent='Connecting to Gmail…';
+    await gmScript();const tok=await gmToken();
+    const q=encodeURIComponent('from:'+GM.from+' has:attachment filename:pdf newer_than:'+GM.days+'d');
+    const lst=await gmApi(tok,'messages?maxResults=25&q='+q);
+    let seen=[];try{seen=JSON.parse(localStorage.getItem('fsmailseen')||'[]')}catch(e){}
+    const ms=(lst.messages||[]).filter(m=>seen.indexOf(m.id)<0);
+    if(!ms.length){$('msg').textContent=(lst.messages||[]).length?'No new OFP emails (all already loaded). Clear saved flights to reload them.':'No OFP emails from '+GM.from+' in the last '+GM.days+' days.';return}
+    const files=[];
+    for(let i=0;i<ms.length;i++){
+      $('msg').textContent='Downloading '+(i+1)+' of '+ms.length+'…';
+      const m=await gmApi(tok,'messages/'+ms[i].id+'?format=full');
+      for(const p of gmPdfParts(m.payload)){const a=await gmApi(tok,'messages/'+ms[i].id+'/attachments/'+p.id);files.push(new File([gmBytes(a.data)],p.name,{type:'application/pdf'}))}
+      seen.push(ms[i].id);
+    }
+    await load(files);
+    try{localStorage.setItem('fsmailseen',JSON.stringify(seen.slice(-200)))}catch(e){}
+  }catch(e){$('msg').textContent='Gmail: '+e.message}
+  finally{btn.disabled=false}
+}
+$('gmBtn').addEventListener('click',gmFetch);
+/*ENDGMAIL*/
+gmUi();
 $('thermalBtn').addEventListener('click',thermal);
 $('print').addEventListener('click',pdfSheet);
 addEventListener('dragover',e=>e.preventDefault());
