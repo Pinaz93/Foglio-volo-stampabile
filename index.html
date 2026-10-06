@@ -91,7 +91,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
-<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip · v1.0.2</p></header>
+<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip · v1.0.3</p></header>
 <main class="panel">
  <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
  <details class="opts card"><summary>Options</summary><div id="optbox"></div></details>
@@ -104,7 +104,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
  <button id="clearBtn" type="button" class="clr" hidden>Clear saved flights</button>
  <div id="msg" class="card">Load one or more LIDO PDFs (all 4 flights at once is fine). Each day becomes half an A4 page with one column per flight: two days per sheet.</div>
 </main>
-<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.2 · 2026-10-06</p>
+<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.3 · 2026-10-06</p>
 <div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
 <div id="out"></div>
 
@@ -694,6 +694,8 @@ function gmShow(){$('gmBtn').hidden=!GM.on}
 function gmUi(){
   const b=$('optbox');
   b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender (empty = any sender)<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>After loading, the emails are<select id="gmact"><option value="keep">kept as unread</option><option value="read">marked as read</option><option value="trash">marked as read and moved to Trash</option><option value="delete">permanently deleted (cannot be undone)</option></select></label><p class="sm">Only today\'s emails are opened. Keeping them unread needs read-only access; the other two options ask Google for permission to modify emails. Trash is recoverable in Gmail for 30 days; permanent deletion is not, and asks Google for full mailbox access. Trash and deletion need a sender above. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
+  b.querySelector('.gmx').insertAdjacentHTML('beforeend','<button type="button" id="gmforget">Forget used emails</button>');
+  $('gmforget').addEventListener('click',()=>{try{localStorage.removeItem('fsmailused')}catch(e){}$('msg').textContent='Used emails forgotten: the next Gmail fetch can load them again.'});
   const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim();gmSave()};
   ['gmcid','gmfrom'].forEach(i=>$(i).addEventListener('change',ch));
   {const sa=$('gmact');sa.value=GM.act||'keep';sa.addEventListener('change',()=>{
@@ -729,9 +731,8 @@ async function gmFetch(){
     const q=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf -in:trash -in:spam after:'+Math.floor(t0.getTime()/1000));
     const lst=await gmApi(tok,'messages?maxResults=25&q='+q);
     const all=lst.messages||[];
-    let seen={};try{seen=JSON.parse(localStorage.getItem('fsmailseen')||'{}');if(Array.isArray(seen))seen={}}catch(e){}
-    const have=new Set(LAST.map(fid));
-    const todo=all.filter(m=>!(seen[m.id]&&seen[m.id].length&&seen[m.id].every(f=>have.has(f))));
+    let used=[];try{used=JSON.parse(localStorage.getItem('fsmailused')||'[]');if(!Array.isArray(used))used=[]}catch(e){}
+    const todo=all.filter(m=>used.indexOf(m.id)<0);
     const who=prof.emailAddress||'?';
     if(!all.length){
       let extra='';
@@ -745,10 +746,12 @@ async function gmFetch(){
     const act=((GM.act==='trash'||GM.act==='delete')&&!GM.from)?'read':(GM.act||'keep');
     const done=all.filter(m=>todo.indexOf(m)<0).map(m=>m.id);
     let nPdf=0,okF=0;const errs=[];
-    if(!todo.length)$('msg').textContent='Signed in as '+who+': '+all.length+' OFP emails today, all already loaded.';
+    const det=[];
+    if(!todo.length)$('msg').textContent='Signed in as '+who+': '+all.length+' OFP emails today, all already used (Options, Gmail, "Forget used emails" to load them again).';
     for(let i=0;i<todo.length;i++){
       $('msg').textContent='Downloading '+(i+1)+' of '+todo.length+'…';
       const m=await gmApi(tok,'messages/'+todo[i].id+'?format=full');
+      det.push('...'+todo[i].id.slice(-4)+' ['+(m.labelIds||[]).join(',')+']');
       if((m.labelIds||[]).indexOf('TRASH')>=0||(m.labelIds||[]).indexOf('SPAM')>=0)continue;
       const files=[];
       for(const p of gmPdfParts(m.payload)){const a=await gmApi(tok,'messages/'+todo[i].id+'/attachments/'+p.id);files.push(new File([gmBytes(a.data)],p.name,{type:'application/pdf'}))}
@@ -756,9 +759,9 @@ async function gmFetch(){
       if(!files.length)continue;
       const res=await load(files);
       okF+=res.out.length;res.errs.forEach(e=>errs.push(e));
-      if(res.out.length&&!res.errs.length){seen[todo[i].id]=res.out.map(fid);done.push(todo[i].id)}
+      if(res.out.length&&!res.errs.length){used.push(todo[i].id);done.push(todo[i].id)}
     }
-    try{localStorage.setItem('fsmailseen',JSON.stringify(seen))}catch(e){}
+    try{localStorage.setItem('fsmailused',JSON.stringify(used.slice(-500)))}catch(e){}
     let acted=0,aerr='';
     if(act!=='keep'){
       for(const id of done){
@@ -766,7 +769,7 @@ async function gmFetch(){
         catch(e){aerr=e.message;break}
       }
     }
-    const sm='Gmail ('+who+'): '+all.length+' emails today, '+nPdf+' PDFs, '+okF+' flights read'+(errs.length?'. Not read: '+errs.join('; '):'')+(act==='keep'?'. Emails left unread.':'. '+acted+' emails '+(act==='delete'?'permanently deleted.':act==='trash'?'moved to Trash.':'marked as read.'))+(aerr?' Could not update emails: '+aerr:'')+((GM.act==='trash'||GM.act==='delete')&&!GM.from?' (Removal skipped: no sender set.)':'');
+    const sm='Gmail ('+who+'): '+all.length+' emails today, '+nPdf+' PDFs, '+okF+' flights read'+(errs.length?'. Not read: '+errs.join('; '):'')+(act==='keep'?'. Emails left unread.':'. '+acted+' emails '+(act==='delete'?'permanently deleted.':act==='trash'?'moved to Trash.':'marked as read.'))+(aerr?' Could not update emails: '+aerr:'')+(det.length?' Emails: '+det.join(' '):'')+((GM.act==='trash'||GM.act==='delete')&&!GM.from?' (Removal skipped: no sender set.)':'');
     $('msg').insertAdjacentHTML('beforeend','<br><span class="sm">'+esc(sm)+'</span>');
   }catch(e){$('msg').textContent='Gmail: '+e.message}
   finally{btn.disabled=false}
