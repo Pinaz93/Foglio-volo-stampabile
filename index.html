@@ -112,7 +112,7 @@ const mins=t=>t?(+t.slice(0,2))*60+(+t.slice(2)):0;
 async function readPdf(file){
   const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
   let out='';
-  for(let p=1;p<=Math.min(pdf.numPages,6);p++){
+  for(let p=1;p<=Math.min(pdf.numPages,120);p++){
     const c=await (await pdf.getPage(p)).getTextContent();
     const rows=[];
     [...c.items].filter(i=>i.str!==undefined).sort((a,b)=>b.transform[5]-a.transform[5]).forEach(i=>{
