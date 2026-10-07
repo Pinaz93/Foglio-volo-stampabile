@@ -91,7 +91,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
-<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip · v1.0.3</p></header>
+<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip · v1.0.4</p></header>
 <main class="panel">
  <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
  <details class="opts card"><summary>Options</summary><div id="optbox"></div></details>
@@ -104,7 +104,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
  <button id="clearBtn" type="button" class="clr" hidden>Clear saved flights</button>
  <div id="msg" class="card">Load one or more LIDO PDFs (all 4 flights at once is fine). Each day becomes half an A4 page with one column per flight: two days per sheet.</div>
 </main>
-<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.3 · 2026-10-06</p>
+<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.4 · 2026-10-07</p>
 <div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
 <div id="out"></div>
 
@@ -682,19 +682,24 @@ async function load(files,extra){
 $('clearBtn').addEventListener('click',()=>{if(confirm('Delete all saved flights from this device?')){LAST=[];try{localStorage.removeItem('fsmailseen')}catch(e){}afterChange();$('msg').textContent='Saved flights cleared. Load new LIDO PDFs to start again.'}});
 try{const sv=JSON.parse(localStorage.getItem(FKEY)||'[]');if(Array.isArray(sv)&&sv.length){LAST=sv;wxRefresh();afterChange();$('msg').innerHTML='<b>'+LAST.length+' saved flights restored.</b> Load more PDFs to add to them, or clear them below.<div class="chips">'+LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')+'</div>'}}catch(e){}
 $('file').addEventListener('change',e=>{const f=[...e.target.files];e.target.value='';load(f)});
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 window.addEventListener('error',e=>{$('msg').textContent='Error: '+e.message});
 buildOpts();
 
 /*GMAIL*/
-const GMD={on:false,cid:'',from:'noreply@services.lhsystems.com',act:'keep'};
+const GMD={on:false,cid:'399120449779-ojfp3e7i8f62gv8l86lsh2aodtguie8v.apps.googleusercontent.com',from:'noreply@services.lhsystems.com',act:'keep'};
 let GM=Object.assign({},GMD);
 try{Object.assign(GM,JSON.parse(localStorage.getItem('fsgm')||'{}'))}catch(e){}
+if(!GM.cid)GM.cid=GMD.cid;
 const gmSave=()=>{try{localStorage.setItem('fsgm',JSON.stringify(GM))}catch(e){}};
 function gmShow(){$('gmBtn').hidden=!GM.on}
 function gmUi(){
   const b=$('optbox');
   b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender (empty = any sender)<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>After loading, the emails are<select id="gmact"><option value="keep">kept as unread</option><option value="read">marked as read</option><option value="trash">marked as read and moved to Trash</option><option value="delete">permanently deleted (cannot be undone)</option></select></label><p class="sm">Only today\'s emails are opened. Keeping them unread needs read-only access; the other two options ask Google for permission to modify emails. Trash is recoverable in Gmail for 30 days; permanent deletion is not, and asks Google for full mailbox access. Trash and deletion need a sender above. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
   b.querySelector('.gmx').insertAdjacentHTML('beforeend','<button type="button" id="gmforget">Forget used emails</button>');
+  b.insertAdjacentHTML('beforeend','<details class="thr"><summary>Backup settings</summary><p class="sm">Save all settings (options, weather thresholds, Gmail) as text, and paste it back here after clearing the browser data.</p><textarea id="bkt" rows="3" style="width:100%" placeholder="Settings text appears here; paste it here to restore"></textarea><button type="button" id="bkx">Export (copy)</button> <button type="button" id="bki">Restore from text</button></details>');
+  $('bkx').addEventListener('click',async()=>{const t=JSON.stringify({v:1,opt:OPT,gm:GM});$('bkt').value=t;try{await navigator.clipboard.writeText(t);$('msg').textContent='Settings copied. Paste them in a note or message to keep a backup.'}catch(e){$('bkt').select();$('msg').textContent='Copy the text in the box to keep a backup.'}});
+  $('bki').addEventListener('click',()=>{try{const o=JSON.parse($('bkt').value.trim());if(!o||o.v!==1)throw 0;if(o.opt)localStorage.setItem('fsopt',JSON.stringify(o.opt));if(o.gm)localStorage.setItem('fsgm',JSON.stringify(o.gm));$('msg').textContent='Settings restored. Reloading…';setTimeout(()=>location.reload(),600)}catch(e){$('msg').textContent='That text is not a valid settings backup.'}});
   $('gmforget').addEventListener('click',()=>{try{localStorage.removeItem('fsmailused')}catch(e){}$('msg').textContent='Used emails forgotten: the next Gmail fetch can load them again.'});
   const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim();gmSave()};
   ['gmcid','gmfrom'].forEach(i=>$(i).addEventListener('change',ch));
