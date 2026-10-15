@@ -91,7 +91,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
-<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip · v1.0.4</p></header>
+<header class="top"><h1>Flight sheet</h1><p>LIDO OFP to yoke sheet and thermal strip · v1.0.5</p></header>
 <main class="panel">
  <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
  <details class="opts card"><summary>Options</summary><div id="optbox"></div></details>
@@ -104,7 +104,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
  <button id="clearBtn" type="button" class="clr" hidden>Clear saved flights</button>
  <div id="msg" class="card">Load one or more LIDO PDFs (all 4 flights at once is fine). Each day becomes half an A4 page with one column per flight: two days per sheet.</div>
 </main>
-<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.4 · 2026-10-07</p>
+<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.5 · 2026-10-15</p>
 <div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
 <div id="out"></div>
 
@@ -118,18 +118,35 @@ const mins=t=>t?(+t.slice(0,2))*60+(+t.slice(2)):0;
 
 async function readPdf(file){
   const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
-  let out='';
-  for(let p=1;p<=Math.min(pdf.numPages,120);p++){
+  const pages=[];
+  for(let p=1;p<=Math.min(pdf.numPages,600);p++){
     const c=await (await pdf.getPage(p)).getTextContent();
     const rows=[];
     [...c.items].filter(i=>i.str!==undefined).sort((a,b)=>b.transform[5]-a.transform[5]).forEach(i=>{
       const r=rows[rows.length-1];
       if(r&&Math.abs(r.y-i.transform[5])<=2.5)r.it.push(i);else rows.push({y:i.transform[5],it:[i]});
     });
-    rows.forEach(r=>{out+=r.it.sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')+'\n'});
+    pages.push(rows.map(r=>r.it.sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n')+'\n');
   }
-  return out;
+  return pages;
 }
+/*MULTI*/
+// A PDF may hold several flights (LIDO "all briefing packages" download). Each page carries a header
+// "FR 529/15Oct26/LIMC-LICC Reg:... OFP:7/0/0"; consecutive pages with the same header form one flight,
+// pages without a header stay with the flight before them.
+function splitFlights(pages){
+  const re=/^\s*((?:FR|DLA) \d+\/\d{2}[A-Za-z]{3}\d{2}\/[A-Z]{4}-[A-Z]{4})\b.*?(OFP:\d+)?\s*$/m;
+  const groups=[];let cur=null;
+  for(const t of pages){
+    const m=t.match(re);const key=m?m[1]+'|'+(m[0].match(/OFP:\d+/)||[''])[0]:null;
+    if(key&&(!cur||(cur.key&&cur.key!==key))){cur={key,txt:[]};groups.push(cur)}
+    else if(!cur){cur={key:null,txt:[]};groups.push(cur)}
+    else if(key&&!cur.key)cur.key=key;
+    cur.txt.push(t);
+  }
+  return groups.map(g=>g.txt.join(''));
+}
+/*ENDMULTI*/
 
 /*WX*/
 const WXDEF={okCeil:1000,okVis:5000,badCeil:400,badVis:1350,wMean:20,wGust:0};
@@ -668,8 +685,13 @@ async function load(files,extra){
   const out=[],errs=[];
   $('msg').textContent='Reading PDFs…';
   for(const f of files){
-    try{const d=parse(await readPdf(f));if(!d.cs&&!d.fn)throw new Error('formato non riconosciuto');out.push(d)}
-    catch(e){errs.push(f.name+': '+e.message)}
+    try{
+      const parts=splitFlights(await readPdf(f));let n=0;
+      for(let i=0;i<parts.length;i++){
+        try{const d=parse(parts[i]);if(!d.cs&&!d.fn)throw new Error('formato non riconosciuto');out.push(d);n++}
+        catch(e){errs.push(f.name+(parts.length>1?' (flight '+(i+1)+')':'')+': '+e.message)}
+      }
+    }catch(e){errs.push(f.name+': '+e.message)}
   }
   const ids=new Set(out.map(fid));
   const all=LAST.filter(d=>!ids.has(fid(d))).concat(out);
