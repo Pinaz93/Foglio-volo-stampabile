@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>[Layout lab] Flight sheet</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b3a8f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-title" content="Flight sheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<style>:root{--bg:#e9edf2;--fg:#12161c;--mut:#5b6472;--btn:#0b3a8f;--btnfg:#fff;--card:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c;--card:#1d2128}}
+:root[data-theme="dark"]{--bg:#14171c;--fg:#e8ecf1;--mut:#9aa4b2;--btn:#f6c945;--btnfg:#14171c;--card:#1d2128}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 Barlow,system-ui,sans-serif}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;max-width:210mm;margin:0 auto}
+.bar h1{font:700 24px 'Barlow Condensed',sans-serif;margin:0 auto 0 0}
+button,.pick{font:600 15px Barlow,sans-serif;background:var(--btn);color:var(--btnfg);border:0;border-radius:6px;padding:9px 14px;cursor:pointer}
+.pick{position:relative;overflow:hidden;display:inline-block}.pick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:100px}
+#msg{max-width:210mm;margin:0 auto;padding:0 16px 10px;color:var(--mut)}
+#msg b{color:var(--fg)}
+.page{max-width:210mm;margin:0 auto 18px}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;color:#12161c;box-shadow:0 1px 8px rgba(0,0,0,.18);margin-bottom:8px;font-size:8.6pt;line-height:1.22;min-height:148mm}
+.col{padding:2.5mm;border-right:1px dashed #888;min-width:0}
+.col:last-child{border-right:0}
+.hd{display:flex;justify-content:space-between;align-items:baseline;font-weight:600;border-bottom:1.5px solid #12161c;padding-bottom:1px}
+.leg{font:700 17pt/1 'Barlow Condensed',sans-serif}
+.cs{font:700 31pt/1 'Barlow Condensed',sans-serif;text-align:center;margin:4px 0 1px}
+.ap{font:700 19pt/1 'Barlow Condensed',sans-serif;text-align:center}
+.ap small{display:block;font:500 9pt 'Barlow Condensed',sans-serif;color:#444}
+.sec{border-top:1px solid #12161c;margin-top:4px;padding-top:2px}
+.sec h3{font:700 9pt 'Barlow Condensed',sans-serif;margin:0 0 1px;color:#555}
+.row{display:flex;justify-content:space-between;gap:4px}
+.row span:first-child{color:#555}
+.row b{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.row em{font-style:normal;color:#555;font-weight:400}
+.proc{font:700 15pt/1.1 'Barlow Condensed',sans-serif}
+.blk{background:#fff;border:2px solid #12161c;border-radius:3px;padding:2px 5px;margin:2px 0 3px;display:flex;justify-content:space-between;align-items:baseline}
+.blk small{font-size:8pt;font-weight:600}.blk span{font:700 24pt/1 'Barlow Condensed',sans-serif}
+.sm{font-size:7.5pt;color:#444}
+input.f{font:700 14pt/1 'Barlow Condensed',sans-serif;width:20mm;border:0;border-bottom:1.5px solid #12161c;background:transparent;color:#12161c;text-align:center;border-radius:0;padding:0}
+.warn{color:#b3261e}
+@media (max-width:700px){.strip{grid-template-columns:1fr;min-height:0}.col{border-right:0;border-bottom:1px dashed #888;padding:12px}.strip{font-size:11pt}}
+.opts{max-width:210mm;margin:0 auto 8px;padding:0 16px}.opts summary{cursor:pointer;font-weight:600}.orow{display:grid;grid-template-columns:1fr 56px 56px;align-items:center;padding:3px 0;border-bottom:1px solid rgba(128,128,128,.25)}.orow input{width:20px;height:20px;justify-self:center}.oh{font-weight:600;color:var(--mut);text-align:center}.oh span:first-child{text-align:left}
+
+.top,.panel{max-width:210mm;margin:0 auto;padding:0 16px}
+.top{padding-top:18px;padding-bottom:12px}
+.top h1{font:700 32px/1 'Barlow Condensed',sans-serif;margin:0}
+.top p{margin:4px 0 0;color:var(--mut)}
+.panel{display:grid;gap:10px;padding-bottom:12px}
+.card{background:var(--card);border-radius:10px;padding:12px 14px}
+.pick.drop{display:flex;align-items:center;gap:14px;text-align:left;background:var(--card);color:var(--fg);border:2px dashed var(--btn);border-radius:12px;padding:18px 16px}
+.drop .ic{font:700 34px/1 'Barlow Condensed',sans-serif;width:44px;height:44px;border-radius:50%;background:var(--btn);color:var(--btnfg);display:flex;align-items:center;justify-content:center;flex:none}
+.drop .dt{display:flex;flex-direction:column;gap:2px}.drop b{font-size:17px}.drop small{color:var(--mut);font-weight:400}
+.panel .opts{max-width:none;margin:0}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.acts button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 8px;font-size:16px;border-radius:10px}
+.acts small{font-weight:400;font-size:12px;opacity:.8}
+.acts .alt{background:transparent;color:var(--fg);border:2px solid var(--btn)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.panel #msg{max-width:none;margin:0;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chips span{background:var(--bg);color:var(--fg);border-radius:20px;padding:2px 10px;font-weight:600;font-size:13px}
+@media print{.opts{display:none}}
+@media print{
+ #th{display:none}
+ @page{size:A4;margin:4mm}
+ body{background:#fff}.bar,#msg,.top,.panel{display:none}
+ .page{max-width:none;margin:0;height:289mm;break-after:page;page-break-after:always}
+ .page:last-child{break-after:auto;page-break-after:auto}
+ .strip{box-shadow:none;margin:0;height:144.5mm;min-height:0;overflow:hidden;grid-template-columns:repeat(4,1fr)!important;font-size:8.6pt}
+ .strip+.strip{border-top:1px dashed #888}
+ .col{border-right:1px dashed #888!important;border-bottom:0!important;padding:2.5mm!important}.col:last-child{border-right:0!important}
+ input.f::placeholder{color:transparent}
+}
+.tfr{display:flex;justify-content:space-between;align-items:center;padding:8px 0 2px}.tfr select{font:600 15px Barlow,sans-serif;padding:6px;border-radius:6px}
+.ed summary{cursor:pointer;font-weight:600}.eg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.eg label{display:flex;flex-direction:column;font-size:12px;color:var(--mut)}.eg input{font:600 16px Barlow,sans-serif;padding:6px;border:1px solid var(--mut);border-radius:6px;background:var(--bg);color:var(--fg)}
+#edit{display:grid;gap:10px}
+@media print{#edit{display:none}}
+.wxm{font-weight:700;margin-left:2px}.wx-ok{color:#1a7f37}.wx-warn{color:#b26a00}.wx-bad{color:#b3261e}.wx-na{color:#777}.wxr{font-style:normal;font-size:10px;color:#555;font-weight:400}.gm{display:flex;flex-direction:column;align-items:center;gap:2px;padding:11px 8px;font-size:16px;border-radius:10px;background:transparent;color:var(--fg);border:2px solid var(--btn)}.gm small{font-weight:400;font-size:12px;opacity:.8}.gmx label{display:block;margin-top:6px}.gmx input{width:100%}.gmx input[type=checkbox]{width:auto;margin-right:6px}.gm[hidden]{display:none}.clr{background:transparent;color:var(--fg);border:1px solid var(--mut);font-size:14px;padding:8px 12px;border-radius:8px;justify-self:start}.rm{margin-top:8px;background:transparent;color:#b3261e;border:1px solid #b3261e;font-size:13px;padding:6px 10px;border-radius:8px}.thr summary{cursor:pointer;font-weight:600;margin-top:8px}.thr button{margin-top:8px}
+</style>
+</head>
+<body>
+<header class="top"><h1>Flight sheet · layout lab</h1><p>TEST PAGE · A4 layouts · based on v1.0.5</p></header>
+<main class="panel">
+ <details class="opts card"><summary>Options</summary><div id="optbox"></div></details>
+ <details class="opts card" id="lab" open><summary>Layout lab (test)</summary><div id="labbox"></div></details>
+ <label class="pick drop"><input id="file" type="file" accept="application/pdf" multiple><span class="ic">+</span><span class="dt"><b>Load LIDO PDFs</b><small>Select all of the day's OFPs at once</small></span></label>
+ <button id="gmBtn" type="button" class="alt gm">Fetch OFPs from Gmail<small>needs a one-time setup in Options</small></button>
+ <div id="edit"></div>
+ <div class="acts">
+  <button id="print" type="button" disabled>Download A4 PDF<small>2 days per sheet</small></button>
+  <button id="thermalBtn" type="button" class="alt" disabled>Thermal strip<small>one image, all flights</small></button>
+ </div>
+ <button id="clearBtn" type="button" class="clr" hidden>Clear saved flights</button>
+ <div id="msg" class="card">Load one or more LIDO PDFs (all 4 flights at once is fine). Each day becomes half an A4 page with one column per flight: two days per sheet.</div>
+</main>
+<p class="sm" style="max-width:210mm;margin:8px auto;padding:0 16px;opacity:.6">Version 1.0.5 · 2026-10-15</p>
+<div id="th" style="max-width:210mm;margin:0 auto;padding:0 16px"></div>
+<div id="out"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const v=x=>x==null||x===''?'—':esc(x);
+const hm=t=>t?t.slice(0,2)+':'+t.slice(2):'—';
+const mins=t=>t?(+t.slice(0,2))*60+(+t.slice(2)):0;
+
+async function readPdf(file){
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  const pages=[];
+  for(let p=1;p<=Math.min(pdf.numPages,600);p++){
+    const c=await (await pdf.getPage(p)).getTextContent();
+    const rows=[];
+    [...c.items].filter(i=>i.str!==undefined).sort((a,b)=>b.transform[5]-a.transform[5]).forEach(i=>{
+      const r=rows[rows.length-1];
+      if(r&&Math.abs(r.y-i.transform[5])<=2.5)r.it.push(i);else rows.push({y:i.transform[5],it:[i]});
+    });
+    pages.push(rows.map(r=>r.it.sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ')).join('\n')+'\n');
+  }
+  return pages;
+}
+/*MULTI*/
+// A PDF may hold several flights (LIDO "all briefing packages" download). Each page carries a header
+// "FR 529/15Oct26/LIMC-LICC Reg:... OFP:7/0/0"; consecutive pages with the same header form one flight,
+// pages without a header stay with the flight before them.
+function splitFlights(pages){
+  const re=/^\s*((?:FR|DLA) \d+\/\d{2}[A-Za-z]{3}\d{2}\/[A-Z]{4}-[A-Z]{4})\b.*?(OFP:\d+)?\s*$/m;
+  const groups=[];let cur=null;
+  for(const t of pages){
+    const m=t.match(re);const key=m?m[1]+'|'+(m[0].match(/OFP:\d+/)||[''])[0]:null;
+    if(key&&(!cur||(cur.key&&cur.key!==key))){cur={key,txt:[]};groups.push(cur)}
+    else if(!cur){cur={key:null,txt:[]};groups.push(cur)}
+    else if(key&&!cur.key)cur.key=key;
+    cur.txt.push(t);
+  }
+  return groups.map(g=>g.txt.join(''));
+}
+/*ENDMULTI*/
+
+/*WX*/
+const WXDEF={okCeil:1000,okVis:5000,badCeil:400,badVis:1350,wMean:20,wGust:0};
+const WXMON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function parseWx(T){
+  const out={},L=T.split('\n').map(s=>s.trim());
+  const i=L.findIndex(l=>/^DESTINATION ALTERNATE:/.test(l));
+  if(i<0)return out;
+  let cur=null,mode=null;
+  for(let k=i+1;k<L.length;k++){
+    const l=L[k];
+    if(/^(ENROUTE AIRPORT|Space Weather|AIRPORTLIST|TAKE-?OFF ALTERNATE|DEPARTURE AIRPORT|DESTINATION AIRPORT|FUEL ENROUTE|ADEQUATE ENROUTE)/i.test(l))break;
+    if(!l||/^Page \d+ of \d+/.test(l)||/^(FR|DLA) \d+\/\S+\/.*OFP:\d+/.test(l))continue;
+    const m=l.match(/^([A-Z]{4})\/([A-Z]{3})\b/);
+    if(m){cur=out[m[1]]={sa:'',ft:''};mode=null;continue}
+    if(!cur)continue;
+    if(/^SA\b/.test(l)){mode='sa';cur.sa=l.replace(/^SA\s*/,'');continue}
+    if(/^FT\b/.test(l)){mode='ft';cur.ft=l.replace(/^FT\s*/,'');continue}
+    if(mode==='ft'&&!/=\s*$/.test(cur.ft))cur.ft+=' '+l;
+    else if(mode==='sa'&&!/=\s*$/.test(cur.sa))cur.sa+=' '+l;
+  }
+  return out;
+}
+function wxDate(ref,dd,hh,mm){
+  let best=null;
+  for(const o of [-1,0,1]){const t=Date.UTC(ref.getUTCFullYear(),ref.getUTCMonth()+o,dd,hh,mm||0);
+    if(best===null||Math.abs(t-ref.getTime())<Math.abs(best-ref.getTime()))best=t}
+  return best;
+}
+function wxEl(tk){
+  const e={};
+  for(const w of tk){
+    let m;
+    if(w==='CAVOK'){e.cav=true;e.vis=9999;e.ceil=Infinity;e.ts=false;e.cb=false;e.tcu=false;e.cloud=true;e.wx=true;continue}
+    if(m=w.match(/^(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS)$/)){const k=m[4]==='MPS'?1.944:1;e.spd=Math.round(+m[2]*k);e.gust=m[3]?Math.round(+m[3]*k):0;continue}
+    if(/^\d{4}$/.test(w)){e.vis=+w;continue}
+    if(m=w.match(/^(FEW|SCT|BKN|OVC)(\d{3}|\/\/\/)(CB|TCU)?$/)){
+      if(!e.cloud){e.cloud=true;e.ceil=Infinity;e.cb=false;e.tcu=false}
+      if(m[3]==='CB')e.cb=true; if(m[3]==='TCU')e.tcu=true;
+      if((m[1]==='BKN'||m[1]==='OVC')&&m[2]!=='///')e.ceil=Math.min(e.ceil,+m[2]*100);
+      continue}
+    if(m=w.match(/^VV(\d{3}|\/\/\/)$/)){if(!e.cloud){e.cloud=true;e.ceil=Infinity;e.cb=false;e.tcu=false}e.ceil=Math.min(e.ceil,m[1]==='///'?0:+m[1]*100);continue}
+    if(/^(NSC|NCD|SKC|CLR)$/.test(w)){e.cloud=true;e.ceil=Infinity;e.cb=false;e.tcu=false;continue}
+    if(w==='NSW'){e.wx=true;e.ts=false;e.sh=false;e.persist=false;continue}
+    if(/^[-+]?([A-Z]{2})+$/.test(w)){
+      const c=w.replace(/^[-+]/,'').match(/.{2}/g)||[];
+      const known=['TS','SH','RA','DZ','SN','SG','PL','GR','GS','UP','BR','FG','FU','VA','DU','SA','HZ','PY','PO','SQ','FC','SS','DS','VC','MI','BC','PR','DR','BL','FZ'];
+      if(!c.every(x=>known.includes(x)))continue;
+      if(!e.wx){e.wx=true;e.ts=false;e.sh=false;e.persist=false}
+      if(c.includes('TS'))e.ts=true;
+      if(c.includes('SH'))e.sh=true;
+      if(c.some(x=>['BR','FG','HZ','FU','DU','SA','VA','SS','DS','FC'].includes(x)))e.persist=true;
+      if(!c.includes('SH')&&!c.includes('TS')&&c.some(x=>['RA','DZ','SN','SG','PL'].includes(x)))e.persist=true;
+    }
+  }
+  return e;
+}
+function wxMerge(a,e,full){
+  const s=full?{spd:0,gust:0,vis:9999,ceil:Infinity,ts:false,cb:false,tcu:false}:Object.assign({},a);
+  if(e.spd!==undefined){s.spd=e.spd;s.gust=e.gust}
+  if(e.vis!==undefined)s.vis=e.vis;
+  if(e.ceil!==undefined)s.ceil=e.ceil;
+  if(e.cloud){s.cb=!!e.cb;s.tcu=!!e.tcu}
+  if(e.wx)s.ts=!!e.ts;
+  return s;
+}
+const wxWorst=(a,b)=>({spd:Math.max(a.spd,b.spd),gust:Math.max(a.gust,b.gust),vis:Math.min(a.vis,b.vis),ceil:Math.min(a.ceil,b.ceil),ts:a.ts||b.ts,cb:a.cb||b.cb,tcu:a.tcu||b.tcu});
+function tafBuild(ft,ref){
+  const tk=ft.replace(/=/g,' ').trim().split(/\s+/).filter(Boolean);
+  let i=0;
+  if(/^(TAF|AMD|COR)$/.test(tk[i]))i++;
+  if(/^\d{6}$/.test(tk[i]))i++;
+  const v=tk[i]&&tk[i].match(/^(\d{2})(\d{2})\/(\d{2})(\d{2})$/);
+  if(!v)return null;
+  i++;
+  const vf=wxDate(ref,+v[1],+v[2]),vt=wxDate(ref,+v[3],+v[4]);
+  const G=[];let cur={t:'BASE',tk:[]};G.push(cur);
+  for(;i<tk.length;i++){
+    const w=tk[i];let m;
+    if(w==='BECMG'||w==='TEMPO'||/^PROB\d{2}$/.test(w)){
+      let t=w==='BECMG'?'BECMG':w==='TEMPO'?'TEMPO':'PROB';
+      if(t==='PROB'&&tk[i+1]==='TEMPO'){t='PROBTEMPO';i++}
+      cur={t,tk:[]};G.push(cur);
+      const p=tk[i+1]&&tk[i+1].match(/^(\d{2})(\d{2})\/(\d{2})(\d{2})$/);
+      if(p){cur.from=wxDate(ref,+p[1],+p[2]);cur.to=wxDate(ref,+p[3],+p[4]);i++}
+      continue}
+    if(m=w.match(/^FM(\d{2})(\d{2})(\d{2})$/)){cur={t:'FM',tk:[],from:wxDate(ref,+m[1],+m[2],+m[3])};G.push(cur);continue}
+    cur.tk.push(w);
+  }
+  const seg=[],ov=[];
+  let st=wxMerge(null,wxEl(G[0].tk),true),from=vf;
+  for(const g of G.slice(1)){
+    const e=wxEl(g.tk);
+    if(g.t==='FM'){seg.push({from,to:g.from,s:st});st=wxMerge(null,e,true);from=g.from}
+    else if(g.t==='BECMG'&&g.from!=null){
+      const ns=wxMerge(st,e,false);
+      seg.push({from,to:g.from,s:st});seg.push({from:g.from,to:g.to,s:wxWorst(st,ns)});
+      st=ns;from=g.to}
+    else if(g.from!=null){ov.push({t:g.t,from:g.from,to:g.to,e,s:wxMerge(st,e,false)})}
+  }
+  seg.push({from,to:vt,s:st});
+  return {vf,vt,seg,ov};
+}
+function wxEta(d,a){
+  const m=(d.date||'').match(/^(\d{2})([A-Z]{3})(\d{4})$/);
+  if(!m||!d.ldg||!d.ldg.z||!a.time)return null;
+  let t=Date.UTC(+m[3],WXMON.indexOf(m[2]),+m[1])+(+d.ldg.z.slice(0,2)*60+ +d.ldg.z.slice(2))*60000;
+  if(d.off&&d.off.z&&d.ldg.z<d.off.z)t+=864e5;
+  return t+(+a.time.slice(0,2)*60+ +a.time.slice(2))*60000;
+}
+function wxAlt(d,a){
+  try{
+    const W=(typeof WXT!=='undefined')?WXT:WXDEF;
+    const raw=d.wxRaw&&d.wxRaw[a.icao];
+    if(!raw||!/\d{4}\/\d{4}/.test(raw.ft||''))return {s:'na',r:'no TAF'};
+    const eta=wxEta(d,a);if(eta==null)return {s:'na',r:'no ETA'};
+    const TF=tafBuild(raw.ft,new Date(eta));if(!TF)return {s:'na',r:'TAF unreadable'};
+    const w0=eta-36e5,w1=eta+36e5;
+    if(w1<=TF.vf||w0>=TF.vt)return {s:'na',r:'outside TAF'};
+    let vis=9999,ceil=Infinity,spd=0,gust=0,ts=false,cb=false,tsMaybe=false,tsTxt='';
+    const hh=t=>new Date(t).toISOString().slice(11,13)+'Z';
+    for(const x of TF.seg){if(x.to>w0&&x.from<w1){vis=Math.min(vis,x.s.vis);ceil=Math.min(ceil,x.s.ceil);spd=Math.max(spd,x.s.spd);gust=Math.max(gust,x.s.gust);ts=ts||x.s.ts;cb=cb||x.s.cb||x.s.tcu}}
+    for(const o of TF.ov){
+      if(!(o.to>w0&&o.from<w1))continue;
+      const e=o.e,transient=!!(e.ts||e.sh)&&!e.persist;
+      if(e.ts||e.cb){tsMaybe=true;tsTxt=o.t==='TEMPO'?'TS TEMPO':'TS PROB'}
+      if(o.t!=='PROBTEMPO'&&!transient){if(e.vis!==undefined)vis=Math.min(vis,e.vis);if(e.ceil!==undefined)ceil=Math.min(ceil,e.ceil)}
+      if(e.spd!==undefined){spd=Math.max(spd,e.spd);gust=Math.max(gust,e.gust)}
+    }
+    const bad=[],warn=[];
+    if(ceil<W.badCeil)bad.push('ceil '+ceil);else if(ceil<W.okCeil)warn.push('ceil '+ceil);
+    if(vis<W.badVis)bad.push('vis '+vis);else if(vis<W.okVis)warn.push('vis '+vis);
+    if(ts)bad.push('TS');else if(cb)warn.push('CB');
+    if(tsMaybe&&!ts)warn.push(tsTxt);
+    if(spd>=W.wMean||(gust>0&&gust>=W.wGust))warn.push('wind '+spd+(gust?'G'+gust:''));
+    if(bad.length)return {s:'bad',r:bad.concat(warn).slice(0,3).join(', ')};
+    if(warn.length)return {s:'warn',r:warn.slice(0,3).join(', ')};
+    return {s:'ok',r:''};
+  }catch(err){return {s:'na',r:'error'}}
+}
+/*ENDWX*/
+
+
+/*DLA*/
+const TZP={ED:'Europe/Berlin',ET:'Europe/Berlin',LI:'Europe/Rome',LF:'Europe/Paris',LE:'Europe/Madrid',EG:'Europe/London',EI:'Europe/Dublin',EH:'Europe/Amsterdam',EB:'Europe/Brussels',EL:'Europe/Luxembourg',LS:'Europe/Zurich',LO:'Europe/Vienna',EK:'Europe/Copenhagen',EN:'Europe/Oslo',ES:'Europe/Stockholm',EF:'Europe/Helsinki',LP:'Europe/Lisbon',LG:'Europe/Athens',LK:'Europe/Prague',EP:'Europe/Warsaw',LH:'Europe/Budapest',LR:'Europe/Bucharest',LB:'Europe/Sofia',LZ:'Europe/Bratislava',LJ:'Europe/Ljubljana',LD:'Europe/Zagreb',LM:'Europe/Malta',LC:'Asia/Nicosia',EV:'Europe/Riga',EY:'Europe/Vilnius',EE:'Europe/Tallinn',BI:'Atlantic/Reykjavik',LA:'Europe/Tirane',LW:'Europe/Skopje',LY:'Europe/Belgrade',LQ:'Europe/Sarajevo',LU:'Europe/Chisinau',LT:'Europe/Istanbul'};
+function tzLocal(icao,date,hhmm){
+  try{const tzn=TZP[(icao||'').slice(0,2)];if(!tzn||!hhmm)return null;
+    const mi=MONS.indexOf(date.slice(2,5).toUpperCase());if(mi<0)return null;
+    const u=Date.UTC(+date.slice(5),mi,+date.slice(0,2),+hhmm.slice(0,2),+hhmm.slice(2));
+    const p=new Intl.DateTimeFormat('en-GB',{timeZone:tzn,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(u));
+    return p.find(x=>x.type==='hour').value+p.find(x=>x.type==='minute').value}catch(e){return null}
+}
+const MONS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const addHM=(t,mn)=>{const x=((+t.slice(0,2))*60+(+t.slice(2))+mn)%1440;return String(Math.floor(x/60)).padStart(2,'0')+String(x%60).padStart(2,'0')};
+function parseDla(T){
+  const m=(re,i=1)=>{const r=T.match(re);return r?r[i]:null};
+  const d={};
+  const h=T.match(/DLA\s+(\d+)\/(\d{2})([A-Za-z]{3})(\d{2})\/([A-Z]{4})-([A-Z]{4})\s+Reg:(\w+)\s+OFP:(\d+\/\d+\/\d+)/);
+  d.fn='EN'+h[1];d.date=h[2]+h[3].toUpperCase()+'20'+h[4];d.dep=h[5];d.arr=h[6];d.reg=h[7];d.ofp=h[8];d.airline='DLA';
+  d.type=m(/\n\s*([A-Z]{3})\s+\d{3}-\d{3}/)||'';
+  const ic=T.match(new RegExp(d.dep+'/\\s*([A-Z]{3})\\s+'+d.arr+'/\\s*([A-Z]{3})'));if(ic){d.depI=ic[1];d.arrI=ic[2]}
+  const hd=T.match(/ATC\s+(\w+)\s+(\d{4})\/(\d{4})\s+(\d{4})\/(\d{4})/);
+  const tin=+(m(/TAXI IN (\d+)/)||0);
+  if(hd){d.cs=hd[1];
+    const L=(icao,t)=>({z:t,l:tzLocal(icao,d.date,t)||''});
+    d.off=L(d.dep,hd[2]);d.air=L(d.dep,hd[3]);
+    const ld=hd[4];d.ldg=L(d.arr,ld);d.on=L(d.arr,addHM(ld,tin));
+  }
+  d.fl=m(/N\d{4}F(\d{3})/);
+  d.ci=m(/COST INDEX\s+(\d+)/);
+  d.avgFF=m(/AVGE FF\s+(\d+)/);d.avgW=m(/AVGE WIND\s+(\d+\/\d+)/);
+  const rw=n=>{const r=T.match(new RegExp('\\b'+n+'/(\\d{2}[LRC]?)\\b'));return r?r[1]:null};
+  d.rwyD=rw(d.dep);d.rwyA=rw(d.arr);
+  {const a=T.indexOf('TIME AWY'),b=T.indexOf('DESTINATION ALTERNATE INFORMATION');
+    if(a>=0&&b>a){const P=T.slice(a,b),toc=P.search(/T O C/);const isP=s=>/^[A-Z]{3,5}\d[A-Z]$/.test(s);
+      const tk=P.split(/\s+/).filter(isP);
+      const pre=toc>=0?P.slice(0,toc).split(/\s+/).filter(isP):[],post=toc>=0?P.slice(toc).split(/\s+/).filter(isP):tk;
+      d.sid=pre.length?pre[0]:'DCT (no SID)';d.star=post.length?post[post.length-1]:'DCT (no STAR)'}}
+  // weights: PLN row = planned, MAL row = maximum LW/TOW; max ZFW from the load sheet if present
+  {const est=T.match(/PLN\s+(\d+)\s+(\d+)\s+\w+\s+PLN\s+(\d+)\s+(\d+)/),mx=T.match(/EST\s+\d+\s+\d+\s+\w+\s+MAL\s+(\d+)\s+(\d+)/),mz=T.match(/ZFW\s+\d+\s+MAX\s+(\d+)/);
+    if(est){d.est={zfw:+est[2]/1000,lw:+est[3]/1000,tow:+est[4]/1000};d.max={zfw:mz?+mz[1]/1000:null,lw:mx?+mx[1]/1000:null,tow:mx?+mx[2]/1000:null}}}
+  const hmm=s=>s?s.replace('.',''):null;
+  d.trip=m(/\nTRIP\s+(\d+)\s+\d\d\.\d\d/);d.fltT=hmm(m(/\nTRIP\s+\d+\s+(\d\d\.\d\d)/));
+  d.cont=m(/MINCONT\s+(\d+)/);d.altn=m(/\nALTN\s+(\d+)\s+\d\d\.\d\d/);d.finres=m(/FINAL RES\s+(\d+)/);
+  d.toFuel=m(/PLNTOF\s+(\d+)/);d.taxi=m(/\nTAXI\s+(?:\.+\s+)?(\d+)\//);
+  d.block=m(/\nBLOCK\s+(\d{3,5})\b/);
+  d.tank=m(/\n([^\n]*TANKERING[^\n]*)/);
+  d.alts=[];
+  {const a=T.match(/\n([A-Z]{4})\/\d+\s+(\d+)\s+(\d+)\s+[HP]\d{3}\s+(\d{4})\s+(\d{3,5})\s/);
+    if(a)d.alts.push({icao:a[1],dist:a[2],fl:a[3],time:a[4],fuel:+a[5]});
+    const re=/INFO\s*-\s*([A-Z]{4})\/\d+\s+(\d+)\s+(\d+)\s+[HP]\d{3}\s+(\d{4})\s*(\d{3,5})/g;let x;
+    while((x=re.exec(T)))d.alts.push({icao:x[1],dist:x[2],fl:x[3],time:x[4],fuel:+x[5]})}
+  d.wxRaw=parseWx(T);d.wxTime=m(/LIDO\/WEATHER SERVICE\s+DATE\s*:\s*\S+\s+TIME\s*:\s*(\d{2}:\d{2})/);
+  d.alts.forEach(a=>{a.wx=WXON?wxAlt(d,a):null});
+  return d;
+}
+/*ENDDLA*/
+function parse(raw){
+  const T=raw.replace(/[ \t]+/g,' ');
+  if(/\bDLA \d+\/\d{2}[A-Za-z]{3}\d{2}\/[A-Z]{4}-[A-Z]{4}/.test(T))return parseDla(T);
+  const m=(re,i=1)=>{const r=T.match(re);return r?r[i]:null};
+  const d={};
+  const h=T.match(/(FR\s?\d{1,4})\s+(\d{2}[A-Z]{3}\d{4})\s+([A-Z]{4})-([A-Z]{4})\s+(\w{4})\s+(\w+)\s+RELEASE/);
+  if(h){d.fn=h[1].replace(/\s/g,'');d.date=h[2];d.dep=h[3];d.arr=h[4];d.type=h[5];d.reg=h[6]}
+  const c=T.match(/C\/S\s+(\w+)\s+(\w{4})\/(\w{3})\s+(\w{4})\/(\w{3})/);
+  if(c){d.cs=c[1];d.depI=c[3];d.arrI=c[5];d.dep=d.dep||c[2];d.arr=d.arr||c[4]}
+  d.ci=m(/CI\s+(\d+)/);d.ofp=m(/OFP:(\d+\/\d+\/\d+)/);
+  {const fsm=T.match(/\b[A-Z]{4}\/(0\d{3}\/(?:[A-Z0-9_]+\/)*[A-Z0-9_]*)/);
+    if(fsm){const lv=[];for(const t of fsm[1].split('/')){if(t==='T_O_D')break;if(/^0\d{3}$/.test(t)&&+t>=200)lv.push(+t)}
+      if(lv.length){const mx=Math.max(...lv);d.fl=lv[0]===mx?String(lv[0]):lv[0]+'>'+mx}}}
+  d.fl=d.fl||m(/N\d{4}F(\d{3})/);
+  if(d.dep&&d.arr){
+    const r=T.match(new RegExp(d.dep+'/(\\d{2}[LRC]?)\\s+([\\s\\S]*?)\\s+'+d.arr+'/(\\d{2}[LRC]?)'));
+    if(r){
+      d.rwyD=r[1];d.rwyA=r[3];
+      const tk=r[2].trim().split(/\s+/);d.route=tk.join(' ');
+      const isP=s=>/^[A-Z]{3,5}\d[A-Z]$/.test(s);
+      d.sid=isP(tk[0])?tk[0]:'DCT (nessuna SID)';
+      d.star=isP(tk[tk.length-1])?tk[tk.length-1]:'DCT (nessuna STAR)';
+    }
+  }
+  const tm=k=>{const r=T.match(new RegExp(k+'\\s+(\\d{4})Z/(\\d{4})L'));return r?{z:r[1],l:r[2]}:{}};
+  d.off=tm('OFF BLOCKS');d.air=tm('AIRBORNE');d.ldg=tm('LANDED');d.on=tm('ON BLOCKS');
+  const sk=T.match(/ON BLOCKS\s+\d{4}Z\/\d{4}L\s+(\d{4})Z\/(\d{4})L/);if(sk)d.sta={z:sk[1],l:sk[2]};
+  d.blockT=m(/BLOCK TIME\s+(\d{4})/);d.fltT=m(/FLIGHT TIME\s+(\d{4})/);
+  d.gnd=m(/GND DIST (\d+)/);d.airD=m(/AIR DIST (\d+)/);d.avgFF=m(/AVG FF KGS\/HR (\d+)/);d.avgW=m(/AVG WIND (\d+\/\d+)/);
+  const w=k=>{const r=T.match(new RegExp(k+'\\s+TOW\\s+([\\d.]+)\\s+LW\\s+([\\d.]+)\\s+ZFW\\s+([\\d.]+)'));return r?{tow:+r[1],lw:+r[2],zfw:+r[3]}:null};
+  d.max=w('MAXIMUM');d.est=w('ESTIMATED');
+  const f=(k,n=1)=>m(new RegExp(k),n);
+  d.trip=f('TRIP \\w{3,4} (\\d+) \\d{4}');d.tripT=f('TRIP \\w{3,4} \\d+ (\\d{4})');
+  d.cont=f('MIN CONT (\\d+)');d.altn=f('ALTN [A-Z]{3} (\\d+) \\d{4}');d.finres=f('FINRES (\\d+) \\d{4}');
+  d.addres=f('ADD RES (\\d+)');d.opn=f('\\nOPN (\\d+)');d.toFuel=f('\\nT/OFF FUEL (\\d+)');
+  d.taxi=f('TAXI \\w{3} (\\d+)');d.block=f('BLOCK FUEL \\w{3} (\\d+)');
+  d.fmcRes=f('RESERVES (\\d+)');d.fmcTT=f('TRIP\\+TAXI (\\d+)');
+  d.tank=f('\\n([^\\n]*TANKERING[^\\n]*)');d.disp=f('DISP RMKS ([^\\n]*)');
+  const el=T.match(/DEST ELEVATION: (\w{4}): (\d+)FT ALTN ELEVATION: (\w{4}): (\d+)FT/);
+  if(el){d.elevA=el[2];d.elevAlt=el[4]}
+  const nx=T.match(/NEXT LEG DATA:\s*(FR\s?\d+)\s+(\S+)\s+(\S+)\s*-\s*(\S+)\s+(\S+)\s+STD\s+(\d{4})\s+ALTN\s+(\S+)/);
+  if(nx)d.next={fn:nx[1].replace(/\s/g,''),from:nx[2],rwy:nx[3],to:nx[4],std:nx[6],alt:nx[7]};
+  d.alts=[];const re=/^\s*C(\d)\s+([A-Z]{4})\s+(\d{3})\s+(\d{3})\s+.*?\s(\d{3})\s+(\d{1,3})\s+[MP]\d{3}\s+(\d{4})\s+(\d{3,5})\s*$/gm;
+  let a;while((a=re.exec(T))){d.alts.push({icao:a[2],trk:a[3],dist:a[4],fl:a[5],time:a[7],fuel:+a[8]})}
+  d.wxRaw=parseWx(T);d.wxTime=m(/LIDO\/WEATHER SERVICE\s+DATE\s*:\s*\S+\s+TIME\s*:\s*(\d{2}:\d{2})/);
+  d.alts.forEach(a=>{a.wx=WXON?wxAlt(d,a):null});
+  return d;
+}
+
+const row=(k,val,u='',dk='')=>`<div class="row" data-k="${dk}"><span>${k}</span><b>${v(val)}${val!=null&&u?' '+u:''}</b></div>`;
+const wt=(k,e,mx)=>`<div class="row" data-k="wts"><span>${k}</span><b class="${e&&mx&&e>mx?'warn':''}">${e?e.toFixed(1):'—'} <em>(${mx?mx.toFixed(1):'—'})</em></b></div>`;
+const MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const dkey=s=>s?s.slice(5)+String(MON.indexOf(s.slice(2,5))+1).padStart(2,'0')+s.slice(0,2):'';
+const bkc=d=>!d.block&&OPT.blk!==false&&d.toFuel&&d.taxi;
+const bk=d=>d.block?d.block:(bkc(d)?String((+d.toFuel)+(+d.taxi)):null);
+const bkl=d=>bkc(d)?'Block min (calc)':'Block min';
+const tz=t=>{if(!t||!t.z)return null;const z=hm(t.z)+'Z',l=hm(t.l)+'L';return OPT.tf==='z'?z:OPT.tf==='l'?l:z+'/'+l};
+
+function col(d,n){
+  if(!d)return '<div class="col"></div>';
+  const main=d.alts[0];
+  const alts=d.alts.map((a,i)=>`<div class="row"><span>${a.icao}${i?'':' ★'}${wxMk(a)}</span><b>${a.fuel}${i?` <em>${a.fuel-main.fuel>=0?'+':''}${a.fuel-main.fuel}</em>`:''}</b></div>`).join('')||'<div class="sm">Not found</div>';
+  const dt=d.date?d.date.replace(/(\d{2})([A-Z]{3})\d{4}/,'$1 $2'):'—';
+  const S={
+   times:`<div class="sec"><h3>Times</h3>${row('Off',tz(d.off),'','times')}${row('T/O',tz(d.air),'','times')}${row('Ldg',tz(d.ldg),'','times')}${row('On',tz(d.on),'','times')}${row('Flight time',d.fltT?hm(d.fltT):null,'','flt')}</div>`,
+   procs:`<div class="sec" data-k="procs"><h3>Procedures</h3>
+   <div class="row"><span>${v(d.dep)} RWY</span><b>${v(d.rwyD)}</b></div><div class="proc">${v(d.sid)}</div>
+   <div class="row"><span>${v(d.arr)} RWY</span><b>${v(d.rwyA)}</b></div><div class="proc">${v(d.star)}</div></div>`,
+   fuel:`<div class="sec" data-k="fuel"><h3>Fuel (kg)</h3>
+   <div class="blk"><small>${bkl(d)}</small><span>${v(bk(d))}</span></div>
+   <div class="row" data-k="blockact"><span>Block act.</span><input class="f" inputmode="numeric" placeholder="____"></div>
+   ${row('Taxi',d.taxi)}${row('Trip',d.trip)}</div>`,
+   alts:`<div class="sec" data-k="alts"><h3>Alternates (fuel · Δ)</h3>${alts}${(WXON&&d.wxTime)?`<div class="sm" data-k="wx">wx as of ${d.wxTime}Z</div>`:''}</div>`,
+   wts:`<div class="sec" data-k="wts"><h3>Weights t (max)</h3>${wt('TOW',d.est&&d.est.tow,d.max&&d.max.tow)}${wt('LW',d.est&&d.est.lw,d.max&&d.max.lw)}${wt('ZFW',d.est&&d.est.zfw,d.max&&d.max.zfw)}</div>`,
+   pax:`<div class="sec" data-k="pax"><div class="row"><span>Pax</span><input class="f" readonly value="${esc(d.pax||'')}" placeholder="___"></div></div>`,
+   notes:`<div class="sm" data-k="notes" style="margin-top:3px">${v(d.tank)}${d.disp&&d.disp!=='NIL'?'<br>DISP: '+esc(d.disp):''}${d.next?`<br>Next ${esc(d.next.fn)} STD ${hm(d.next.std)}Z`:''}</div>`
+  };
+  S.head=`<div class="hd"><span class="leg">${n}°</span><span>${v(d.fn)}</span><span>${dt}</span></div>
+  <div class="cs">${v(d.cs)}</div>
+  <div class="ap">${v(d.dep)} → ${v(d.arr)}<small>${v(d.depI)} → ${v(d.arrI)} · FL${v(d.fl)} · ${v(d.reg)}</small></div>`;
+  return `<div class="col">
+  ${layOrder().map(k=>S[k]).join('')}
+  </div>`;
+}
+
+function render(list){
+  const g={};list.forEach(d=>(g[d.date]=g[d.date]||[]).push(d));
+  const strips=[];
+  Object.keys(g).sort((a,b)=>dkey(a).localeCompare(dkey(b))).forEach(k=>{
+    const L=g[k].sort((a,b)=>((a.off&&a.off.z)||'').localeCompare((b.off&&b.off.z)||''));
+    for(let i=0;i<L.length;i+=4)strips.push([0,1,2,3].map(j=>col(L[i+j],i+j+1)).join(''));
+  });
+  let h='';
+  for(let i=0;i<strips.length;i+=2)h+=`<div class="page"><div class="strip">${strips[i]}</div>${strips[i+1]?`<div class="strip">${strips[i+1]}</div>`:''}</div>`;
+  return h;
+}
+
+const KEYS=[['times','Times (off, T/O, ldg, on)'],['flt','Flight time'],['procs','Procedures (RWY, SID, STAR)'],['fuel','Fuel (block, taxi, trip)'],['blockact','Block actual line'],['alts','Alternates'],['wx','Alternates weather check'],['wts','Weights'],['pax','Pax line'],['notes','Notes (tankering, next, OFP no.)']];
+const DEF={a4:{},th:{times:false,blockact:false}};
+let OPT={a4:{},th:{},tf:'both',wx:{}};
+const saveOpt=()=>{try{localStorage.setItem('fsopt',JSON.stringify(OPT))}catch(e){}};
+try{const o=JSON.parse(localStorage.getItem('fsopt')||'{}');OPT={a4:o.a4||{},th:o.th||{},tf:o.tf||'both',wx:o.wx||{},wxOn:o.wxOn,blk:o.blk,thClip:o.thClip}}catch(e){}
+let WXON=OPT.wxOn!==false;
+let WXT=Object.assign({},WXDEF,OPT.wx);
+const WXF=[['okCeil','OK if ceiling at least (ft)'],['okVis','OK if visibility at least (m)'],['badCeil','Not OK if ceiling below (ft)'],['badVis','Not OK if visibility below (m)'],['wMean','Wind alert: mean wind from (kt)'],['wGust','Gust alert: gust from (kt), 0 = any gust']];
+const WXS={ok:['✓','wx-ok'],warn:['!','wx-warn'],bad:['✗','wx-bad'],na:['?','wx-na']};
+function wxMk(a){if(!a.wx)return '';const k=WXS[a.wx.s];return ` <b class="wxm ${k[1]}" data-k="wx" title="${esc(a.wx.r)}">${k[0]}</b>`+((a.wx.s==='warn'||a.wx.s==='bad')&&a.wx.r?`<em class="wxr" data-k="wx"> ${esc(a.wx.r)}</em>`:'')}
+function wxRefresh(){LAST.forEach(d=>d.alts.forEach(a=>{a.wx=WXON?wxAlt(d,a):null}))}
+const on=(f,k)=>OPT[f][k]!==undefined?OPT[f][k]:DEF[f][k]!==false;
+function optCss(){
+  const css=KEYS.filter(([k])=>!layF(k)).map(([k])=>`.col [data-k="${k}"]{display:none}`).join('');
+  let st=document.getElementById('optcss');if(!st){st=document.createElement('style');st.id='optcss';document.head.appendChild(st)}
+  st.textContent=css;
+}
+function buildOpts(){
+  const b=$('optbox');
+  b.innerHTML='<div class="orow oh"><span></span><span>A4</span><span>Thermal</span></div>'+KEYS.map(([k,l])=>`<div class="orow"><span>${l}</span><input type="checkbox" data-f="a4" data-k="${k}"${on('a4',k)?' checked':''}>${k==='blockact'?'<span></span>':`<input type="checkbox" data-f="th" data-k="${k}"${on('th',k)?' checked':''}>`}</div>`).join('');
+  b.querySelectorAll('input').forEach(i=>i.addEventListener('change',()=>{
+    OPT[i.dataset.f][i.dataset.k]=i.checked;
+    try{localStorage.setItem('fsopt',JSON.stringify(OPT))}catch(e){}
+    optCss();
+  }));
+  b.insertAdjacentHTML('beforeend','<div class="tfr"><span>Times shown as</span><select id="tf"><option value="both">Z / local</option><option value="z">Z only</option><option value="l">Local only</option></select></div>');
+  const tf=b.querySelector('#tf');tf.value=OPT.tf;
+  tf.addEventListener('change',()=>{OPT.tf=tf.value;saveOpt();if(LAST.length)$('out').innerHTML=render(LAST)});
+  b.insertAdjacentHTML('beforeend','<div class="tfr"><label class="sm"><input type="checkbox" id="blkc"> If block fuel is missing, use takeoff fuel + taxi (marked "calc")</label></div>');
+  {const bc=b.querySelector('#blkc');bc.checked=OPT.blk!==false;bc.addEventListener('change',()=>{OPT.blk=bc.checked;saveOpt();buildEditor();if(LAST.length)$('out').innerHTML=render(LAST)})}
+  b.insertAdjacentHTML('beforeend','<details class="thr"><summary>Weather check</summary><label class="sm"><input type="checkbox" id="wxon"> Enable alternates weather check</label><div class="eg">'+WXF.map(([k,l])=>`<label>${l}<input type="number" inputmode="numeric" data-w="${k}" value="${WXT[k]}"></label>`).join('')+'</div><button type="button" id="wxreset">Reset defaults</button><p class="sm">Planning aid only. Defaults: ✓ at ceiling ≥ 1000 ft and vis ≥ 5000 m (VMC), ✗ below 400 ft / 1350 m (CAT I 200 ft / 550 m + OM-A alternate margin 200 ft / 800 m), ! in between. ✓ means clearly above any plausible planning minima, ! means check minima, wind or TS, ✗ means below the lowest plausible minima, ? means no usable TAF. Final decision with FD PRO and the OM.</p></details>');
+  const wchg=()=>{WXT=Object.assign({},WXDEF,OPT.wx);saveOpt();wxRefresh();if(LAST.length)$('out').innerHTML=render(LAST)};
+  b.querySelectorAll('input[data-w]').forEach(i=>i.addEventListener('change',()=>{const v=parseFloat(i.value);if(isFinite(v))OPT.wx[i.dataset.w]=v;wchg()}));
+  const wo=b.querySelector('#wxon');wo.checked=WXON;wo.addEventListener('change',()=>{WXON=wo.checked;OPT.wxOn=WXON;wchg()});
+  b.querySelector('#wxreset').addEventListener('click',()=>{OPT.wx={};b.querySelectorAll('input[data-w]').forEach(i=>{i.value=WXDEF[i.dataset.w]});wchg()});
+  optCss();
+}
+
+var LAST=[];
+function wxMark(x,mx,cy,st,S){
+  x.save();x.strokeStyle='#000';x.fillStyle='#000';x.lineWidth=3.2*S;x.lineCap='round';x.lineJoin='round';
+  if(st==='ok'){x.beginPath();x.moveTo(mx*S,cy*S);x.lineTo((mx+5)*S,(cy+6)*S);x.lineTo((mx+16)*S,(cy-9)*S);x.stroke()}
+  else if(st==='bad'){x.beginPath();x.moveTo(mx*S,(cy-8)*S);x.lineTo((mx+14)*S,(cy+6)*S);x.moveTo((mx+14)*S,(cy-8)*S);x.lineTo(mx*S,(cy+6)*S);x.stroke()}
+  else{x.font=`700 ${28*S}px "Barlow Condensed","Arial Narrow",sans-serif`;x.textBaseline='middle';x.fillText(st==='warn'?'!':'?',mx*S,cy*S)}
+  x.restore();
+}
+function strip(d,n){
+  const S=4,W=280,M=6,IW=W-2*M,F='"Barlow Condensed","Arial Narrow",sans-serif',O=k=>on('th',k);
+  const c=document.createElement('canvas');c.width=W*S;c.height=1800*S;
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#000';x.strokeStyle='#000';x.textBaseline='top';
+  const font=(s,b)=>`${b?700:500} ${s*S}px ${F}`;
+  const tw=(t,s,b)=>{x.font=font(s,b);return x.measureText(t).width/S};
+  const fit=(t,s,b,mw=IW)=>{while(tw(t,s,b)>mw&&s>8)s--;return s};
+  const T=(t,s,b,al='l',adv=true)=>{s=fit(t,s,b);const w=tw(t,s,b);x.font=font(s,b);x.fillText(t,(al==='l'?M:al==='r'?W-M-w:(W-w)/2)*S,y*S);if(adv)y+=s*1.1;return s};
+  const rule=(th=2,g=4)=>{y+=g;x.fillRect(M*S,y*S,IW*S,th*S);y+=th+g};
+  const R=(k,val,s=22)=>{x.font=font(s-3,false);x.fillText(k,M*S,(y+2)*S);const w=tw(val,s,true);x.font=font(s,true);x.fillText(val,(W-M-w)*S,y*S);y+=s*1.15};
+  const g=v=>v==null||v===''?'-':String(v);
+  let y=Math.max(4,(OPT.thClip==null?2:+OPT.thClip)*8-2);
+  const dt=d.date?d.date.slice(0,2)+' '+d.date.slice(2,5):'-';
+  T(n+'°',28,true,'l',false);T(g(d.fn),20,true,'c',false);T(dt,18,true,'r');y+=2;
+  rule(3,5);
+  T(g(d.cs),88,true,'c');T(g(d.dep)+' → '+g(d.arr),38,true,'c');
+  T(g(d.depI)+' → '+g(d.arrI)+'  FL'+g(d.fl),17,false,'c');
+  if(O('flt'))R('Flight time',d.fltT?hm(d.fltT):'-');
+  if(O('times')){rule();[['Off',d.off],['T/O',d.air],['Ldg',d.ldg],['On',d.on]].forEach(([k,o])=>R(k,tz(o)||'-'))}
+  if(O('procs')){rule();R(g(d.dep)+' RWY',g(d.rwyD));T(g(d.sid),40,true);R(g(d.arr)+' RWY',g(d.rwyA));T(g(d.star),40,true)}
+  if(O('fuel')){
+    rule();
+    const y0=y+2,h=60;x.lineWidth=3*S;x.strokeRect(M*S,y0*S,IW*S,h*S);
+    x.font=font(18,true);x.fillText('Block',(M+6)*S,(y0+6)*S);x.fillText('min',(M+6)*S,(y0+26)*S);if(bkc(d)){x.font=font(13,true);x.fillText('calc',(M+6)*S,(y0+46)*S)}
+    const b=g(bk(d)),bs=fit(b,64,true,IW-76);x.font=font(bs,true);x.fillText(b,(W-M-6-tw(b,bs,true))*S,(y0+(h-bs)/2)*S);y=y0+h+8;
+    R('Taxi',g(d.taxi));R('Trip',g(d.trip));
+  }
+  if(O('alts')){
+    rule();T('ALTERNATES (kg)',16,true);
+    const al=d.alts||[];
+    al.forEach((a,i)=>{
+      const y0=y,lab=a.icao+(i?'':' ★');
+      R(lab,String(a.fuel)+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):''));
+      if(O('wx')&&a.wx){
+        wxMark(x,M+tw(lab,19,false)+8,y0+14,a.wx.s,S);
+        if((a.wx.s==='warn'||a.wx.s==='bad')&&a.wx.r)T(a.wx.r,15,false);
+      }
+    });
+    if(WXON&&O('wx')&&d.wxTime)T('wx as of '+d.wxTime+'Z',13,false,'r');
+  }
+  if(O('wts')){
+    rule();T('WEIGHTS t (max)',16,true);
+    const e=d.est||{},m=d.max||{};
+    [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([k,f])=>R(k,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
+  }
+  if(O('pax')){y+=10;x.font=font(18,false);x.fillText('Pax',M*S,y*S);x.fillRect((M+36)*S,(y+22)*S,(IW-36)*S,2*S);if(d.pax){x.font=font(26,true);x.fillText(String(d.pax),(M+44)*S,(y-2)*S)}y+=32}
+  if(O('notes')){rule();T('OFP '+g(d.ofp),15,false,'c')}
+  y+=10;
+  for(let i=M;i<W-M;i+=14)x.fillRect(i*S,y*S,7*S,1.5*S);
+  y+=2;
+  const H=Math.ceil(y),o=document.createElement('canvas');o.width=W;o.height=H;
+  const ox=o.getContext('2d');ox.imageSmoothingQuality='high';ox.drawImage(c,0,0,W*S,H*S,0,0,W,H);
+  const id=ox.getImageData(0,0,W,H),p=id.data;
+  for(let i=0;i<p.length;i+=4){const k=p[i]<150?0:255;p[i]=p[i+1]=p[i+2]=k;p[i+3]=255}
+  ox.putImageData(id,0,0);return o;
+}
+async function thermal(){
+  if(!LAST.length){$('msg').textContent='Load the LIDO PDFs first.';return}
+  try{await document.fonts.load('700 20px "Barlow Condensed"');await document.fonts.load('500 20px "Barlow Condensed"')}catch(e){}
+  const box=$('th');box.innerHTML='';
+  const L=[...LAST].sort((a,b)=>(dkey(a.date)+((a.off&&a.off.z)||'')).localeCompare(dkey(b.date)+((b.off&&b.off.z)||'')));
+  const cnt={};
+  const cs=L.map(d=>{cnt[d.date]=(cnt[d.date]||0)+1;return strip(d,cnt[d.date])});
+  const big=document.createElement('canvas');big.width=280;big.height=cs.reduce((s,c)=>s+c.height,0);
+  const bx=big.getContext('2d');bx.fillStyle='#fff';bx.fillRect(0,0,big.width,big.height);
+  let yy=0;cs.forEach(c=>{bx.drawImage(c,0,yy);yy+=c.height});
+  const blob=await new Promise(r=>big.toBlob(r,'image/png'));
+  const url=URL.createObjectURL(blob),name=flightFileName('flight_strip','png',L);
+  const w=document.createElement('div');
+  w.innerHTML=`<p><b>${cs.length} flights</b> in one image · about ${Math.round(big.height/8)} mm of paper</p><img src="${url}" alt="Thermal strip" style="width:280px;background:#fff;border:1px solid #888;display:block;margin:6px 0 10px">`;
+  const sh=document.createElement('button');sh.textContent='Share';
+  sh.onclick=async()=>{const f=new File([blob],name,{type:'image/png'});try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else throw 0}catch(err){await saveFile(blob,name)}};
+  w.appendChild(sh);box.appendChild(w);
+  box.scrollIntoView();
+}
+
+async function saveFile(blob,name,target){
+  const url=URL.createObjectURL(blob);
+  const type=blob.type||(name.endsWith('.pdf')?'application/pdf':'image/png');
+  const file=new File([blob],name,{type});
+  try{const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()}catch(e){}
+  const m=target||$('msg');if(target)target.hidden=false;
+  m.innerHTML='<b>File ready:</b> '+esc(name)+' · <a href="'+url+'" download="'+esc(name)+'" style="color:inherit">Download again</a>';
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    const b=document.createElement('button');b.textContent='Share / Save to Files';b.style.marginLeft='8px';
+    b.onclick=async()=>{try{await navigator.share({files:[file]})}catch(e){}};
+    m.appendChild(b);
+  }
+}
+/*LAYOUT*/
+const LAYD={orient:'p',cols:4,rows:2,scale:'auto',margin:0,clip:2,cut:true,newrow:true,bal:false,style:'col',order:null,fields:null,name:'1 · Classic'};
+const PRESETS=[
+ {name:'1 · Classic',desc:'4 flights across, 2 days per sheet (the current layout)',orient:'p',cols:4,rows:2},
+ {name:'2 · Landscape large',desc:'4 across on a landscape sheet, 1 day per page, bigger print',orient:'l',cols:4,rows:1},
+ {name:'3 · Large 3-up',desc:'3 flights per portrait page, bigger print',orient:'p',cols:3,rows:1},
+ {name:'4 · Extra large 2-up',desc:'2 flights per page, very large print',orient:'p',cols:2,rows:1},
+ {name:'5 · Compact',desc:'5 across, 2 rows, smaller print, flights flow on without a new row per day',orient:'p',cols:5,rows:2,newrow:false},
+ {name:'6 · Essentials',desc:'4 across, 3 rows: only times, procedures, fuel and pax (3 days per page)',orient:'p',cols:4,rows:3,fields:{times:true,flt:true,procs:true,fuel:true,blockact:false,alts:false,wx:false,wts:false,pax:true,notes:false}},
+ {name:'7 · Horizontal strips',desc:'one flight per horizontal strip, 6 per portrait page',orient:'p',cols:1,rows:6,style:'band'},
+ {name:'8 · Horizontal strips landscape',desc:'one flight per horizontal strip, 4 per landscape page',orient:'l',cols:1,rows:4,style:'band'}
+];
+let LY=Object.assign({},LAYD);
+try{const o=JSON.parse(localStorage.getItem('fslay')||'null');if(o&&o.cols)LY=Object.assign({},LAYD,o)}catch(e){}
+const layF=k=>LY.fields&&LY.fields[k]!==undefined?LY.fields[k]:on('a4',k);
+function wxDraw(doc,x,y,st,k){
+  k=k||1;const cy=y-.8*k;
+  doc.setDrawColor(0);doc.setTextColor(0);doc.setLineWidth(.5*k);
+  if(st==='ok'){doc.line(x,cy,x+.9*k,cy+k);doc.line(x+.9*k,cy+k,x+2.6*k,cy-1.6*k)}
+  else if(st==='bad'){doc.line(x,cy-1.1*k,x+2.3*k,cy+1.1*k);doc.line(x,cy+1.1*k,x+2.3*k,cy-1.1*k)}
+  else{doc.setFont('helvetica','bold');doc.setFontSize(10*k);doc.text(st==='warn'?'!':'?',x,y+.2*k)}
+}
+const BLK=[['head','Header (callsign, route)'],['times','Times'],['procs','Procedures'],['fuel','Fuel'],['alts','Alternates'],['wts','Weights'],['pax','Pax line'],['notes','Notes']];
+const SUB={times:['flt','Flight time'],fuel:['blockact','Block actual line'],alts:['wx','Weather check marks']};
+const BW={head:44,times:36,procs:40,fuel:38,alts:48,wts:36,pax:36,notes:42};
+const ORD0=BLK.map(b=>b[0]);
+function layOrder(ly){ly=ly||LY;const o=Array.isArray(ly.order)?ly.order.filter(k=>ORD0.includes(k)):[];if(!o.includes('head'))o.unshift('head');ORD0.forEach(k=>{if(!o.includes(k))o.push(k)});return o}
+const blkOn=id=>id==='head'?true:id==='times'?(layF('times')||layF('flt')):id==='fuel'?(layF('fuel')||layF('blockact')):layF(id);
+// Drawing context: current y, text/line helpers. dry = measure only.
+function mkc(doc,k,dry,L,R,y,lim){
+  const c={doc,k,dry,L,R,y,lim,C:(L+R)/2};
+  c.t=(s,xx,yy,sz,b,al)=>{doc.setFont('helvetica',b?'bold':'normal');doc.setFontSize(sz*k);if(!dry)doc.text(String(s),xx,yy,{align:al||'left'})};
+  c.fitT=(s,xx,yy,sz,b,al)=>{doc.setFont('helvetica',b?'bold':'normal');sz*=k;doc.setFontSize(sz);while(doc.getTextWidth(String(s))>c.R-c.L&&sz>6*k){sz-=.5*k;doc.setFontSize(sz)}if(!dry)doc.text(String(s),xx,yy,{align:al||'left'})};
+  c.gray=g=>{if(!dry)doc.setTextColor(g)};
+  c.ln=(x1,x2,yy,lw)=>{if(!dry){doc.setLineWidth(Math.max(lw*k,.1));doc.line(x1,yy,x2,yy)}};
+  c.row=(a,val)=>{c.y+=3.2*k;c.gray(80);c.t(a,c.L,c.y,7.8,false);c.gray(0);c.t(val,c.R,c.y,8.2,true,'right')};
+  c.sec=s=>{c.y+=1.6*k;c.ln(c.L,c.R,c.y,.18);c.y+=2.7*k;c.t(s,c.L,c.y,7.5,true)};
+  return c;
+}
+const pgv=v=>v==null||v===''?'-':String(v);
+const BLOCKS={
+  head(c,d,n){
+    const {L,R,C,k}=c;
+    c.y+=5*k;c.t(n+'°',L,c.y,15,true);c.t(pgv(d.fn),C,c.y,8,true,'center');c.t(d.date?d.date.slice(0,2)+' '+d.date.slice(2,5):'-',R,c.y,8,true,'right');
+    c.y+=1.5*k;c.ln(L,R,c.y,.35);
+    c.y+=10*k;c.fitT(pgv(d.cs),C,c.y,25,true,'center');
+    c.y+=6.5*k;c.fitT(pgv(d.dep)+' > '+pgv(d.arr),C,c.y,13,true,'center');
+    c.y+=3.6*k;c.fitT(pgv(d.depI)+' > '+pgv(d.arrI)+'  FL'+pgv(d.fl)+'  '+pgv(d.reg),C,c.y,7,false,'center');
+  },
+  times(c,d){
+    if(!blkOn('times'))return;
+    c.sec('TIMES');
+    if(layF('times'))[['Off',d.off],['T/O',d.air],['Ldg',d.ldg],['On',d.on]].forEach(([a,o])=>c.row(a,tz(o)||'-'));
+    if(layF('flt'))c.row('Flight time',d.fltT?hm(d.fltT):'-');
+  },
+  procs(c,d){
+    if(!layF('procs'))return;const k=c.k;
+    c.sec('PROCEDURES');
+    c.row(pgv(d.dep)+' RWY',pgv(d.rwyD));c.y+=4.6*k;c.fitT(pgv(d.sid),c.L,c.y,13.5,true);
+    c.row(pgv(d.arr)+' RWY',pgv(d.rwyA));c.y+=4.6*k;c.fitT(pgv(d.star),c.L,c.y,13.5,true);
+  },
+  fuel(c,d){
+    if(!blkOn('fuel'))return;const {k,doc,L,R}=c;
+    c.sec('FUEL (kg)');
+    if(layF('fuel')){c.y+=8.5*k;if(!c.dry){doc.setLineWidth(.35*k);doc.rect(L,c.y-7.5*k,R-L,9*k)}
+      c.t(bkl(d),L+1.5*k,c.y-2*k,7,true);c.t(pgv(bk(d)),R-1.5*k,c.y,21,true,'right');c.y+=k}
+    if(layF('blockact')){c.y+=3.2*k;c.gray(80);c.t('Block act.',L,c.y,7.8,false);c.gray(0);c.ln(L+17*k,R,c.y+.5*k,.2)}
+    if(layF('fuel')){c.row('Taxi',pgv(d.taxi));c.row('Trip',pgv(d.trip))}
+  },
+  alts(c,d){
+    if(!layF('alts'))return;const {k,doc,L,R}=c;
+    c.sec('ALTERNATES (fuel, diff.)');
+    if(WXON&&layF('wx')&&d.wxTime){c.gray(90);c.t('wx '+d.wxTime+'Z',R,c.y,6,false,'right');c.gray(0)}
+    const al=d.alts||[];
+    al.forEach((a,i)=>{
+      const lab=a.icao+(i?'':' *');
+      c.row(lab,a.fuel+(i?'  '+(a.fuel-al[0].fuel>=0?'+':'')+(a.fuel-al[0].fuel):''));
+      if(layF('wx')&&a.wx){
+        doc.setFont('helvetica','normal');doc.setFontSize(7.8*k);
+        if(!c.dry)wxDraw(doc,L+doc.getTextWidth(lab)+2.2*k,c.y,a.wx.s,k);
+        if((a.wx.s==='warn'||a.wx.s==='bad')&&a.wx.r&&c.y<c.lim-12*k){c.y+=2.4*k;c.gray(60);c.t(a.wx.r,L+k,c.y,6,false);c.gray(0)}
+      }
+    });
+  },
+  wts(c,d){
+    if(!layF('wts'))return;
+    c.sec('WEIGHTS t (max)');
+    const e=d.est||{},m=d.max||{};
+    [['TOW','tow'],['LW','lw'],['ZFW','zfw']].forEach(([a,f])=>c.row(a,e[f]!=null&&m[f]!=null?e[f].toFixed(1)+' ('+m[f].toFixed(1)+')':'-'));
+  },
+  pax(c,d){
+    if(!layF('pax'))return;const k=c.k;
+    c.y+=3.9*k;c.gray(80);c.t('Pax',c.L,c.y,7.8,false);c.gray(0);c.ln(c.L+9*k,c.R,c.y+.5*k,.2);if(d.pax&&!c.dry)c.t(String(d.pax),c.L+11*k,c.y-.2*k,11,true);
+  },
+  notes(c,d){
+    if(!layF('notes'))return;const k=c.k;
+    c.y+=3.6*k;c.gray(64);
+    if(d.tank)c.t(String(d.tank).slice(0,40),c.L,c.y,6,false);
+    if(d.next){c.y+=2.6*k;c.t('Next '+d.next.fn+' STD '+hm(d.next.std)+'Z',c.L,c.y,6,false)}
+    if(d.ofp){c.y+=2.6*k;c.t('OFP '+d.ofp,c.L,c.y,6,false)}
+    c.gray(0);
+  }
+};
+// Vertical cell: blocks stacked top to bottom. Returns height used.
+function pdfCol(doc,x,top,w,h,d,n,k,dry){
+  if(!d)return 0;
+  const p=2.5*k,c=mkc(doc,k,dry,x+p,x+w-p,top+p,dry?1e9:top+h);
+  layOrder().forEach(id=>BLOCKS[id](c,d,n));
+  return c.y-top+p;
+}
+// Horizontal strip: blocks flow into columns left to right.
+function bandFlow(doc,fl,k,w,h){
+  const p=2.5*k,avail=h-2*p,cols=[];let cur=null;
+  layOrder().filter(blkOn).forEach(id=>{
+    let bh=0;fl.forEach(d=>{const c=mkc(doc,k,true,0,1000,0,1e9);BLOCKS[id](c,d,1);bh=Math.max(bh,c.y)});
+    if(!bh)return;
+    if(!cur||cur.h+bh>avail){cur={ids:[id],h:bh,w:BW[id]};cols.push(cur)}else{cur.ids.push(id);cur.h+=bh;cur.w=Math.max(cur.w,BW[id])}
+  });
+  const total=cols.reduce((a,c)=>a+c.w*k,0)+2*p,maxH=Math.max.apply(null,cols.map(c=>c.h));
+  return {cols,total,maxH,p,ok:total<=w+.01&&maxH<=avail+.01};
+}
+// All strips share the same column arrangement (doc._bf, set in buildPdf).
+function pdfBand(doc,x,top,w,h,d,n,k,dry){
+  if(!d)return 0;
+  const f=doc._bf;if(dry)return f.maxH+2*f.p;
+  const extra=Math.max(0,(w-f.total)/f.cols.length);let xc=x+f.p;
+  f.cols.forEach((col,i)=>{
+    const cw=col.w*k+extra,c=mkc(doc,k,false,xc+1.2*k,xc+cw-1.2*k,top+f.p,top+h);
+    col.ids.forEach(id=>BLOCKS[id](c,d,n));
+    if(i<f.cols.length-1){doc.setDrawColor(170);doc.setLineWidth(.1);doc.line(xc+cw,top+f.p,xc+cw,top+h-f.p);doc.setDrawColor(0)}
+    xc+=cw;
+  });
+  return h;
+}
+function layStrips(fl,ly){
+  const g={};fl.forEach(d=>(g[d.date]=g[d.date]||[]).push(d));
+  const days=Object.keys(g).sort((a,b)=>dkey(a).localeCompare(dkey(b))).map(k=>g[k].sort((a,b)=>((a.off&&a.off.z)||'').localeCompare((b.off&&b.off.z)||'')));
+  const strips=[];
+  if(ly.newrow)days.forEach(L=>{
+    const nr=Math.ceil(L.length/ly.cols),base=Math.floor(L.length/nr),ex=L.length%nr;let i=0;
+    for(let r=0;r<nr;r++){const sz=ly.bal?base+(r<ex?1:0):Math.min(ly.cols,L.length-i);strips.push(L.slice(i,i+sz).map((d,j)=>({d,n:i+j+1})));i+=sz}
+  });
+  else{const all=[];days.forEach(L=>L.forEach((d,i)=>all.push({d,n:i+1})));for(let i=0;i<all.length;i+=ly.cols)strips.push(all.slice(i,i+ly.cols))}
+  return strips;
+}
+function layGeom(ly){
+  const land=ly.orient==='l',W=land?297:210,H=land?210:297,m=+ly.margin||0;
+  const mt=ly.clip==null?2:Math.max(0,+ly.clip||0);
+  return {W,H,m,mt,cw:(W-2*m)/ly.cols,ch:(H-2*m)/ly.rows};
+}
+function layScale(doc,fl,ly){
+  const g=layGeom(ly);
+  if(ly.scale!=='auto'&&isFinite(+ly.scale))return Math.min(3,Math.max(.4,+ly.scale));
+  if(ly.style==='band'){
+    let k=3;while(k>.4&&!bandFlow(doc,fl,k,g.cw,g.ch-g.mt).ok)k=Math.round((k-.02)*100)/100;
+    return Math.max(.4,k);
+  }
+  let need=0;fl.forEach(d=>{need=Math.max(need,pdfCol(doc,0,0,52.5,1e9,d,1,1,true))});
+  need=Math.max(need+3,60);
+  return Math.floor(Math.min(3,Math.max(.4,Math.min(g.cw/52.5,(g.ch-g.mt)/need)))*100)/100;
+}
+function buildPdf(fl,ly){
+  ly=ly||LY;
+  if(!fl.length||!window.jspdf)return null;
+  const g=layGeom(ly);
+  const doc=new window.jspdf.jsPDF({orientation:ly.orient==='l'?'landscape':'portrait',unit:'mm',format:'a4'});
+  const k=layScale(doc,fl,ly),strips=layStrips(fl,ly);
+  if(ly.style==='band')doc._bf=bandFlow(doc,fl,k,g.cw,g.ch-g.mt);
+  for(let i=0;i<strips.length;i+=ly.rows){
+    if(i)doc.addPage();
+    for(let s=0;s<ly.rows&&i+s<strips.length;s++){
+      const t0=s===0?g.mt:0,top=g.m+s*g.ch+t0;   // first row leaves room for the clip
+      strips[i+s].forEach((c,j)=>(ly.style==='band'?pdfBand:pdfCol)(doc,g.m+j*g.cw,top,g.cw,g.ch-t0,c.d,c.n,k,false));
+    }
+    if(ly.cut){
+      doc.setDrawColor(130);doc.setLineWidth(.15);doc.setLineDashPattern([1,1],0);
+      for(let j=1;j<ly.cols;j++)doc.line(g.m+j*g.cw,g.m,g.m+j*g.cw,g.H-g.m);
+      for(let s=1;s<ly.rows;s++)doc.line(0,g.m+s*g.ch,g.W,g.m+s*g.ch);
+      doc.setDrawColor(0);doc.setLineDashPattern([],0);
+    }
+  }
+  doc._k=k;
+  return doc;
+}
+// File name from the flight dates: flight_sheet_28oct26.pdf (several days: flight_sheet_28oct26-30oct26.pdf)
+function flightFileName(prefix,ext,list){
+  const ds=[...new Set(list.map(d=>d.date).filter(Boolean))].sort((a,b)=>dkey(a).localeCompare(dkey(b)));
+  const f=s=>s.slice(0,2)+s.slice(2,5).toLowerCase()+s.slice(7);
+  return prefix+(ds.length?'_'+f(ds[0])+(ds.length>1?'-'+f(ds[ds.length-1]):''):'')+'.'+ext;
+}
+async function pdfSheet(){
+  if(!LAST.length){$('msg').textContent='Load the LIDO PDFs first.';return}
+  if(!window.jspdf){$('msg').textContent='PDF library not loaded: reload the page.';return}
+  const doc=buildPdf(LAST,LY);
+  $('th').innerHTML='';
+  await saveFile(doc.output('blob'),flightFileName('flight_sheet','pdf',LAST));
+}
+
+const EF=[['cs','Callsign'],['fl','Cruise FL'],['rwyD','Dep RWY'],['sid','SID'],['rwyA','Arr RWY'],['star','STAR'],['block','Block min'],['taxi','Taxi'],['trip','Trip'],['pax','Pax']];
+const FKEY='fsflights';
+function saveFlights(){try{localStorage.setItem(FKEY,JSON.stringify(LAST))}catch(e){}$('clearBtn').hidden=!LAST.length}
+function fid(d){return [d.fn,d.date,d.dep,d.arr].join('|')}
+function afterChange(){buildEditor();$('print').disabled=$('thermalBtn').disabled=!LAST.length;$('out').innerHTML=LAST.length?render(LAST):'';saveFlights()}
+function buildEditor(){
+  const b=$('edit');
+  b.innerHTML=LAST.map((d,i)=>`<details class="card ed"><summary>Edit ${esc(d.fn||'?')} ${esc(d.dep||'')}→${esc(d.arr||'')}</summary><div class="eg">${EF.map(([k,l])=>`<label>${l}<input data-i="${i}" data-e="${k}" value="${esc(k==='block'?(bk(d)||''):(d[k]==null?'':d[k]))}"></label>`).join('')}<button type="button" class="rm" data-rm="${i}">Remove this flight</button></details>`).join('');
+  b.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{LAST[+inp.dataset.i][inp.dataset.e]=inp.value;$('out').innerHTML=render(LAST);saveFlights()}));
+  b.querySelectorAll('[data-rm]').forEach(x=>x.addEventListener('click',()=>{LAST.splice(+x.dataset.rm,1);afterChange();$('msg').textContent=LAST.length?LAST.length+' flights saved.':'No flights saved.'}));
+}
+async function load(files,extra){
+  if(!files.length)return {out:[],errs:[]};
+  if(typeof pdfjsLib==='undefined'){$('msg').textContent='PDF library not loaded: check your connection and reload the page.';return {out:[],errs:['pdf.js missing']}}
+  const out=[],errs=[];
+  $('msg').textContent='Reading PDFs…';
+  for(const f of files){
+    try{
+      const parts=splitFlights(await readPdf(f));let n=0;
+      for(let i=0;i<parts.length;i++){
+        try{const d=parse(parts[i]);if(!d.cs&&!d.fn)throw new Error('formato non riconosciuto');out.push(d);n++}
+        catch(e){errs.push(f.name+(parts.length>1?' (flight '+(i+1)+')':'')+': '+e.message)}
+      }
+    }catch(e){errs.push(f.name+': '+e.message)}
+  }
+  const ids=new Set(out.map(fid));
+  const all=LAST.filter(d=>!ids.has(fid(d))).concat(out);
+  all.sort((a,b)=>(dkey(a.date)+((a.off&&a.off.z)||'')).localeCompare(dkey(b.date)+((b.off&&b.off.z)||'')));
+  LAST=all;afterChange();
+  $('msg').innerHTML=out.length?`<b>${LAST.length} flights ready</b> (saved on this device)<div class="chips">${LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')}</div>Always check the data against the original OFP before use. ${errs.length?'<br>Errors: '+esc(errs.join('; ')):''}`:'No flights read. '+esc(errs.join('; '));
+  if(extra)$('msg').insertAdjacentHTML('beforeend','<br><span class="sm">'+esc(extra)+'</span>');
+  return {out,errs};
+}
+$('clearBtn').addEventListener('click',()=>{if(confirm('Delete all saved flights from this device?')){LAST=[];try{localStorage.removeItem('fsmailseen')}catch(e){}afterChange();$('msg').textContent='Saved flights cleared. Load new LIDO PDFs to start again.'}});
+try{const sv=JSON.parse(localStorage.getItem(FKEY)||'[]');if(Array.isArray(sv)&&sv.length){LAST=sv;wxRefresh();afterChange();$('msg').innerHTML='<b>'+LAST.length+' saved flights restored.</b> Load more PDFs to add to them, or clear them below.<div class="chips">'+LAST.map(d=>'<span>'+esc((d.fn||'')+' '+(d.dep||'')+'→'+(d.arr||''))+'</span>').join('')+'</div>'}}catch(e){}
+$('file').addEventListener('change',e=>{const f=[...e.target.files];e.target.value='';load(f)});
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+window.addEventListener('error',e=>{$('msg').textContent='Error: '+e.message});
+buildOpts();
+
+/*GMAIL*/
+const GMD={on:false,cid:'399120449779-ojfp3e7i8f62gv8l86lsh2aodtguie8v.apps.googleusercontent.com',from:'noreply@services.lhsystems.com',act:'keep'};
+let GM=Object.assign({},GMD);
+try{Object.assign(GM,JSON.parse(localStorage.getItem('fsgm')||'{}'))}catch(e){}
+if(!GM.cid)GM.cid=GMD.cid;
+const gmSave=()=>{try{localStorage.setItem('fsgm',JSON.stringify(GM))}catch(e){}};
+function gmShow(){$('gmBtn').hidden=!GM.on}
+function gmUi(){
+  const b=$('optbox');
+  b.insertAdjacentHTML('beforeend','<details class="thr gmx"><summary>Gmail</summary><label class="sm"><input type="checkbox" id="gmon"> Show the "Fetch OFPs from Gmail" button</label><label>Google OAuth client ID<input id="gmcid" placeholder="xxxx.apps.googleusercontent.com" value="'+esc(GM.cid)+'"></label><label>Sender (empty = any sender)<input id="gmfrom" value="'+esc(GM.from)+'"></label><label>After loading, the emails are<select id="gmact"><option value="keep">kept as unread</option><option value="read">marked as read</option><option value="trash">marked as read and moved to Trash</option><option value="delete">permanently deleted (cannot be undone)</option></select></label><p class="sm">Only today\'s emails are opened. Keeping them unread needs read-only access; the other two options ask Google for permission to modify emails. Trash is recoverable in Gmail for 30 days; permanent deletion is not, and asks Google for full mailbox access. Trash and deletion need a sender above. Nothing is sent anywhere; the PDFs are read on this device. Setup: Google Cloud Console, enable Gmail API, create an OAuth client of type Web application with this site as authorized JavaScript origin, add your Gmail address as a test user, paste the client ID here.</p></details>');
+  b.querySelector('.gmx').insertAdjacentHTML('beforeend','<button type="button" id="gmforget">Forget used emails</button>');
+  b.insertAdjacentHTML('beforeend','<details class="thr"><summary>Backup settings</summary><p class="sm">Save all settings (options, weather thresholds, Gmail) as text, and paste it back here after clearing the browser data.</p><textarea id="bkt" rows="3" style="width:100%" placeholder="Settings text appears here; paste it here to restore"></textarea><button type="button" id="bkx">Export (copy)</button> <button type="button" id="bki">Restore from text</button></details>');
+  $('bkx').addEventListener('click',async()=>{const t=JSON.stringify({v:1,opt:OPT,gm:GM});$('bkt').value=t;try{await navigator.clipboard.writeText(t);$('msg').textContent='Settings copied. Paste them in a note or message to keep a backup.'}catch(e){$('bkt').select();$('msg').textContent='Copy the text in the box to keep a backup.'}});
+  $('bki').addEventListener('click',()=>{try{const o=JSON.parse($('bkt').value.trim());if(!o||o.v!==1)throw 0;if(o.opt)localStorage.setItem('fsopt',JSON.stringify(o.opt));if(o.gm)localStorage.setItem('fsgm',JSON.stringify(o.gm));$('msg').textContent='Settings restored. Reloading…';setTimeout(()=>location.reload(),600)}catch(e){$('msg').textContent='That text is not a valid settings backup.'}});
+  $('gmforget').addEventListener('click',()=>{try{localStorage.removeItem('fsmailused')}catch(e){}$('msg').textContent='Used emails forgotten: the next Gmail fetch can load them again.'});
+  const ch=()=>{GM.cid=$('gmcid').value.trim();GM.from=$('gmfrom').value.trim();gmSave()};
+  ['gmcid','gmfrom'].forEach(i=>$(i).addEventListener('change',ch));
+  {const sa=$('gmact');sa.value=GM.act||'keep';sa.addEventListener('change',()=>{
+    if((sa.value==='trash'||sa.value==='delete')&&!GM.from){alert('Set a sender first: removing emails without a sender filter could remove other emails.');sa.value=GM.act||'keep';return}
+    if(sa.value==='delete'&&!confirm('After loading, today\'s OFP emails from this sender will be PERMANENTLY deleted from Gmail. This cannot be undone. Continue?')){sa.value=GM.act||'keep';return}
+    if(sa.value==='trash'&&!confirm('After loading, today\'s OFP emails will be moved to the Gmail Trash (recoverable for 30 days). Continue?')){sa.value=GM.act||'keep';return}
+    GM.act=sa.value;gmSave()})}
+  const on=$('gmon');on.checked=!!GM.on;gmShow();on.addEventListener('change',()=>{GM.on=on.checked;gmSave();gmShow()});
+}
+function gmScript(){return new Promise((ok,ko)=>{
+  if(window.google&&google.accounts&&google.accounts.oauth2)return ok();
+  const sc=document.createElement('script');sc.src='https://accounts.google.com/gsi/client';sc.onload=()=>ok();sc.onerror=()=>ko(new Error('Cannot reach Google: check your connection'));document.head.appendChild(sc);
+})}
+function gmToken(){return new Promise((ok,ko)=>{
+  const tc=google.accounts.oauth2.initTokenClient({client_id:GM.cid,scope:GM.act==='delete'?'https://mail.google.com/':'https://www.googleapis.com/auth/gmail.'+((GM.act==='read'||GM.act==='trash')?'modify':'readonly'),callback:r=>r&&r.access_token?ok(r.access_token):ko(new Error((r&&r.error)||'Sign-in cancelled')),error_callback:e=>ko(new Error((e&&e.type)||'Sign-in cancelled'))});
+  tc.requestAccessToken({prompt:''});
+})}
+async function gmApi(tok,path,body,del){
+  const r=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/'+path,del?{method:'DELETE',headers:{Authorization:'Bearer '+tok}}:body===undefined?{headers:{Authorization:'Bearer '+tok}}:{method:'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){let msg='';try{const j=await r.json();msg=(j.error&&j.error.message)||''}catch(e){}throw new Error('Gmail '+r.status+(msg?': '+msg.slice(0,220):'')+(r.status===403?' (check that the Gmail API is enabled in the same Google Cloud project as the client ID)':''))}
+  return del?{}:r.json();
+}
+function gmPdfParts(p,out=[]){if(!p)return out;if(p.body&&p.body.attachmentId&&((p.filename&&/\.pdf$/i.test(p.filename))||/pdf/i.test(p.mimeType||'')))out.push({name:p.filename||'attachment.pdf',id:p.body.attachmentId});(p.parts||[]).forEach(x=>gmPdfParts(x,out));return out}
+function gmBytes(b64u){const b=atob(b64u.replace(/-/g,'+').replace(/_/g,'/'));const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+async function gmFetch(){
+  if(!GM.cid){$('msg').textContent='Set your Google OAuth client ID first: Options, Gmail.';$('optbox').parentNode.open=true;return}
+  const btn=$('gmBtn');btn.disabled=true;
+  try{
+    $('msg').textContent='Connecting to Gmail…';
+    await gmScript();const tok=await gmToken();
+    const prof=await gmApi(tok,'profile');
+    const t0=new Date();t0.setHours(0,0,0,0);
+    const q=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf -in:trash -in:spam after:'+Math.floor(t0.getTime()/1000));
+    const lst=await gmApi(tok,'messages?maxResults=25&q='+q);
+    const all=lst.messages||[];
+    let used=[];try{used=JSON.parse(localStorage.getItem('fsmailused')||'[]');if(!Array.isArray(used))used=[]}catch(e){}
+    const todo=all.filter(m=>used.indexOf(m.id)<0);
+    const who=prof.emailAddress||'?';
+    if(!all.length){
+      let extra='';
+      try{const q2=encodeURIComponent((GM.from?'from:'+GM.from+' ':'')+'has:attachment filename:pdf newer_than:7d');
+        const l2=await gmApi(tok,'messages?maxResults=5&q='+q2);
+        if(l2.messages&&l2.messages.length){const mm=await gmApi(tok,'messages/'+l2.messages[0].id+'?format=metadata&metadataHeaders=Date');
+          const dh=((mm.payload&&mm.payload.headers)||[]).find(x=>x.name==='Date');
+          extra=' In the last 7 days there are '+l2.messages.length+(l2.messages.length>=5?'+':'')+' such emails; the latest is dated '+(dh?dh.value:'?')+' (labels: '+(mm.labelIds||[]).join(', ')+'; phone date: '+new Date().toString().slice(0,24)+').'}
+        else extra=' None in the last 7 days either.'}catch(e){}
+      $('msg').innerHTML='Signed in as <b>'+esc(who)+'</b>: no emails'+(GM.from?' from '+esc(GM.from):'')+' with a PDF today. Only today\'s emails are read. Check that this is the mailbox that receives the OFPs and the sender address (Options, Gmail). Leave Sender empty to search every PDF.'+esc(extra);return}
+    const act=((GM.act==='trash'||GM.act==='delete')&&!GM.from)?'read':(GM.act||'keep');
+    const done=all.filter(m=>todo.indexOf(m)<0).map(m=>m.id);
+    let nPdf=0,okF=0;const errs=[];
+    const det=[];
+    if(!todo.length)$('msg').textContent='Signed in as '+who+': '+all.length+' OFP emails today, all already used (Options, Gmail, "Forget used emails" to load them again).';
+    for(let i=0;i<todo.length;i++){
+      $('msg').textContent='Downloading '+(i+1)+' of '+todo.length+'…';
+      const m=await gmApi(tok,'messages/'+todo[i].id+'?format=full');
+      det.push('...'+todo[i].id.slice(-4)+' ['+(m.labelIds||[]).join(',')+']');
+      if((m.labelIds||[]).indexOf('TRASH')>=0||(m.labelIds||[]).indexOf('SPAM')>=0)continue;
+      const files=[];
+      for(const p of gmPdfParts(m.payload)){const a=await gmApi(tok,'messages/'+todo[i].id+'/attachments/'+p.id);files.push(new File([gmBytes(a.data)],p.name,{type:'application/pdf'}))}
+      nPdf+=files.length;
+      if(!files.length)continue;
+      const res=await load(files);
+      okF+=res.out.length;res.errs.forEach(e=>errs.push(e));
+      if(res.out.length&&!res.errs.length){used.push(todo[i].id);done.push(todo[i].id)}
+    }
+    try{localStorage.setItem('fsmailused',JSON.stringify(used.slice(-500)))}catch(e){}
+    let acted=0,aerr='';
+    if(act!=='keep'){
+      for(const id of done){
+        try{if(act==='delete')await gmApi(tok,'messages/'+id,undefined,true);else{await gmApi(tok,'messages/'+id+'/modify',{removeLabelIds:['UNREAD']});if(act==='trash')await gmApi(tok,'messages/'+id+'/trash',{})}acted++}
+        catch(e){aerr=e.message;break}
+      }
+    }
+    const sm='Gmail ('+who+'): '+all.length+' emails today, '+nPdf+' PDFs, '+okF+' flights read'+(errs.length?'. Not read: '+errs.join('; '):'')+(act==='keep'?'. Emails left unread.':'. '+acted+' emails '+(act==='delete'?'permanently deleted.':act==='trash'?'moved to Trash.':'marked as read.'))+(aerr?' Could not update emails: '+aerr:'')+(det.length?' Emails: '+det.join(' '):'')+((GM.act==='trash'||GM.act==='delete')&&!GM.from?' (Removal skipped: no sender set.)':'');
+    $('msg').insertAdjacentHTML('beforeend','<br><span class="sm">'+esc(sm)+'</span>');
+  }catch(e){$('msg').textContent='Gmail: '+e.message}
+  finally{btn.disabled=false}
+}
+$('gmBtn').addEventListener('click',gmFetch);
+/*ENDGMAIL*/
+gmUi();
+$('thermalBtn').addEventListener('click',thermal);
+$('print').addEventListener('click',pdfSheet);
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();load([...e.dataTransfer.files].filter(f=>/pdf$/i.test(f.name)))});
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+<script>
+/*LAB*/
+(function(){
+const SAMPLE=[{"fn": "FR529", "date": "15OCT2026", "dep": "LIMC", "arr": "LICC", "type": "B738", "reg": "EIEVE", "cs": "RYR227P", "depI": "MXP", "arrI": "CTA", "ci": "6", "ofp": "7/0/0", "fl": "370", "rwyD": "35R", "rwyA": "08", "route": "ROBAS6Q ROBAS DCT TINKU DCT MAREL DCT BEKIV DCT LIBRO LIBRO1Q", "sid": "ROBAS6Q", "star": "LIBRO1Q", "off": {"z": "1045", "l": "1245"}, "air": {"z": "1100", "l": "1300"}, "ldg": {"z": "1239", "l": "1439"}, "on": {"z": "1254", "l": "1454"}, "sta": {"z": "1245", "l": "1445"}, "blockT": "0209", "fltT": "0139", "gnd": "643", "airD": "632", "avgFF": "2466", "avgW": "039/019", "max": {"tow": 75, "lw": 65.3, "zfw": 61.7}, "est": {"tow": 65.7, "lw": 61.7, "zfw": 59}, "trip": "4070", "tripT": "0139", "cont": null, "altn": "1298", "finres": "1136", "addres": "0", "opn": null, "toFuel": "6745", "taxi": "195", "block": "6940", "fmcRes": "2434", "fmcTT": "4265", "tank": "NO TANKERING RECOMMENDED (P)", "disp": "NIL", "elevA": "39", "elevAlt": "46", "next": {"fn": "FR528", "from": "LICC/CTA", "rwy": "08", "to": "LIMC/MXP", "std": "1310", "alt": "LIMF/TRN"}, "alts": [{"icao": "LICA", "trk": "029", "dist": "127", "fl": "180", "time": "0028", "fuel": 1298, "wx": {"s": "ok", "r": ""}}, {"icao": "LICJ", "trk": "300", "dist": "198", "fl": "190", "time": "0040", "fuel": 1789, "wx": {"s": "ok", "r": ""}}, {"icao": "LIRF", "trk": "327", "dist": "342", "fl": "320", "time": "0059", "fuel": 2592, "wx": {"s": "ok", "r": ""}}], "wxRaw": {"LICA": {"sa": "151250 AUTO 24009KT 9999 NCD 23/10 Q1023=", "ft": "151100 1512/1612 27012KT CAVOK BECMG 1516/1518 VRB05KT BECMG 1606/1608 27013KT="}, "LICT": {"sa": "151255 35012KT CAVOK 24/11 Q1024=", "ft": ""}, "LICJ": {"sa": "151250 03009KT CAVOK 23/12 Q1024=", "ft": "151100 1512/1612 05010KT CAVOK BECMG 1518/1520 VRB05KT BECMG 1608/1610 33012KT="}, "LIRF": {"sa": "151250 27007KT CAVOK 24/17 Q1024 NOSIG=", "ft": "151100 1512/1618 30012KT CAVOK BECMG 1522/1524 03008KT BECMG 1610/1612 30014KT="}}, "wxTime": "13:13"}, {"fn": "FR528", "date": "15OCT2026", "dep": "LICC", "arr": "LIMC", "type": "B738", "reg": "EIEVE", "cs": "RYR8VD", "depI": "CTA", "arrI": "MXP", "ci": "6", "ofp": "13/0/0", "fl": "360>380", "rwyD": "08", "rwyA": "35R", "route": "BUDIN5B BUDIN DCT NERAR DCT TAGEL DCT LUNAK DCT RAVAL DCT MEDAL DCT GILIO DCT UPDIN DCT SPEZI M729 IDONA Y69 MEBUR MEBUR3E", "sid": "BUDIN5B", "star": "MEBUR3E", "off": {"z": "1310", "l": "1510"}, "air": {"z": "1325", "l": "1525"}, "ldg": {"z": "1513", "l": "1713"}, "on": {"z": "1528", "l": "1728"}, "sta": {"z": "1510", "l": "1710"}, "blockT": "0218", "fltT": "0148", "gnd": "661", "airD": "672", "avgFF": "2526", "avgW": "027/016", "max": {"tow": 75, "lw": 65.3, "zfw": 61.7}, "est": {"tow": 66.4, "lw": 61.8, "zfw": 58.9}, "trip": "4530", "tripT": "0148", "cont": null, "altn": "1483", "finres": "1127", "addres": "0", "opn": null, "toFuel": "7440", "taxi": "195", "block": "7635", "fmcRes": "2610", "fmcTT": "4725", "tank": "NO TANKERING RECOMMENDED (P)", "disp": "NIL", "elevA": "768", "elevAlt": "989", "alts": [{"icao": "LIMF", "trk": "237", "dist": "145", "fl": "080", "time": "0034", "fuel": 1483, "wx": {"s": "bad", "r": "ceil 200, vis 300"}}, {"icao": "LIPE", "trk": "115", "dist": "192", "fl": "230", "time": "0037", "fuel": 1634, "wx": {"s": "ok", "r": ""}}, {"icao": "LIME", "trk": "079", "dist": "215", "fl": "250", "time": "0041", "fuel": 1829, "wx": {"s": "ok", "r": ""}}, {"icao": "LIRP", "trk": "145", "dist": "225", "fl": "250", "time": "0042", "fuel": 1858, "wx": {"s": "ok", "r": ""}}], "wxRaw": {"LIMF": {"sa": "151250 VRB02KT 8000 NSC 21/12 Q1025=", "ft": "151100 1512/1612 VRB04KT CAVOK="}, "LIPE": {"sa": "151250 06004KT 360V110 CAVOK 21/12 Q1025=", "ft": "151100 1512/1612 VRB03KT CAVOK PROB40 TEMPO 1523/1607 3000 BR="}, "LIME": {"sa": "151250 21005KT 180V260 CAVOK 20/13 Q1025 NOSIG=", "ft": "151100 1512/1612 VRB04KT CAVOK="}, "LIRP": {"sa": "151245 28009KT 250V310 CAVOK 23/15 Q1025 NOSIG=", "ft": "151100 1512/1612 29010KT 9999 SCT030 BECMG 1518/1520 VRB03KT TEMPO 1524/1607 1500 BCFG="}}, "wxTime": "13:13"}, {"fn": "FR5616", "date": "15OCT2026", "dep": "LIMC", "arr": "LATI", "type": "B738", "reg": "EIEVE", "cs": "RYR7YG", "depI": "MXP", "arrI": "TIA", "ci": "6", "ofp": "15/0/0", "fl": "350>390", "rwyD": "35R", "rwyA": "35", "route": "VAKON1Q VAKON DCT OTKEK DCT SOVUB DCT BAXON DCT SPL DCT SIPAL DCT TIBRI DCT LEBGA L607 PETAK", "sid": "VAKON1Q", "star": "DCT (nessuna STAR)", "off": {"z": "1600", "l": "1800"}, "air": {"z": "1615", "l": "1815"}, "ldg": {"z": "1745", "l": "1945"}, "on": {"z": "1800", "l": "2000"}, "sta": {"z": "1755", "l": "1955"}, "blockT": "0200", "fltT": "0130", "gnd": "587", "airD": "570", "avgFF": "2403", "avgW": "006/032", "max": {"tow": 75, "lw": 65.3, "zfw": 61.7}, "est": {"tow": 62.9, "lw": 59.3, "zfw": 56.8}, "trip": "3608", "tripT": "0130", "cont": "200", "altn": "1050", "finres": "1100", "addres": "0", "opn": null, "toFuel": "6170", "taxi": "195", "block": "6365", "fmcRes": "2150", "fmcTT": "3803", "tank": "NO TANKERING RECOMMENDED (P)", "disp": "NIL", "elevA": "125", "elevAlt": "122", "next": {"fn": "FR5617", "from": "LATI/TIA", "rwy": "17", "to": "LIMC/MXP", "std": "1820", "alt": "LIMF/TRN"}, "alts": [{"icao": "LDDU", "trk": "313", "dist": "172", "fl": "240", "time": "0036", "fuel": 1602, "wx": {"s": "ok", "r": ""}}, {"icao": "LGTS", "trk": "105", "dist": "222", "fl": "250", "time": "0041", "fuel": 1753, "wx": {"s": "warn", "r": "wind 22G38, CB"}}, {"icao": "LBSF", "trk": "058", "dist": "269", "fl": "290", "time": "0048", "fuel": 2078, "wx": {"s": "ok", "r": ""}}], "wxRaw": {"LYPG": {"sa": "151300 36014KT CAVOK 22/01 Q1021 NOSIG=", "ft": "151101 1512/1612 36013KT CAVOK TX22/1513Z TN12/1604Z TEMPO 1512/1516 36015G30KT BECMG 1516/1518 36016G34KT="}, "LDDU": {"sa": "151300 25004KT 180V300 CAVOK 20/04 Q1021 TEMPO 32008KT=", "ft": "151125 1512/1612 20008KT CAVOK TX22/1513Z TN15/1604Z PROB40 1513/1516 32010KT BECMG 1515/1517 02015KT TEMPO 1520/1608 02015G25KT PROB40 TEMPO 1610/1612 33008KT="}, "LGTS": {"sa": "151250 31013KT CAVOK 20/06 Q1021 NOSIG=", "ft": "151100 1512/1612 34015KT 9999 FEW025 TEMPO 1603/1609 34015G25KT="}, "LBSF": {"sa": "151300 29011KT 9999 FEW027 OVC044 11/05 Q1023 NOSIG=", "ft": "151100 1512/1612 28012KT 9999 SCT030 BKN050 BECMG 1522/1524 VRB04KT TEMPO 1600/1606 4000 RA BKN015 BKN030 OVC050="}}, "wxTime": "13:13"}, {"fn": "FR5617", "date": "15OCT2026", "dep": "LATI", "arr": "LIMC", "type": "B738", "reg": "EIEVE", "cs": "RYR6LW", "depI": "TIA", "arrI": "MXP", "ci": "6", "ofp": "1/0/0", "fl": "380", "rwyD": "17", "rwyA": "35R", "route": "DIRES DCT EBELA DCT KOFER DCT ROTAR DCT LAPAB DCT ADOSA DCT IDREK DCT ELTAR DCT NOBMI DCT NEVNI DCT OSKOR DCT LEGLO L615 PEXUG PEXUG3E", "sid": "DCT (nessuna SID)", "star": "PEXUG3E", "off": {"z": "1820", "l": "2020"}, "air": {"z": "1835", "l": "2035"}, "ldg": {"z": "2023", "l": "2223"}, "on": {"z": "2038", "l": "2238"}, "sta": {"z": "2025", "l": "2225"}, "blockT": "0218", "fltT": "0148", "gnd": "668", "airD": "692", "avgFF": "2395", "avgW": "006/031", "max": {"tow": 75, "lw": 65.3, "zfw": 61.7}, "est": {"tow": 62.7, "lw": 58.4, "zfw": 55.7}, "trip": "4315", "tripT": "0148", "cont": null, "altn": "1429", "finres": "1075", "addres": "0", "opn": null, "toFuel": "7035", "taxi": "195", "block": "7230", "fmcRes": "2504", "fmcTT": "4510", "tank": "NO TANKERING RECOMMENDED (P)", "disp": "NIL", "elevA": "768", "elevAlt": "989", "alts": [{"icao": "LIMF", "trk": "237", "dist": "145", "fl": "080", "time": "0034", "fuel": 1429, "wx": {"s": "ok", "r": ""}}, {"icao": "LIPE", "trk": "115", "dist": "192", "fl": "250", "time": "0037", "fuel": 1595, "wx": {"s": "ok", "r": ""}}, {"icao": "LIME", "trk": "079", "dist": "215", "fl": "270", "time": "0041", "fuel": 1786, "wx": {"s": "ok", "r": ""}}, {"icao": "LIRP", "trk": "145", "dist": "225", "fl": "250", "time": "0042", "fuel": 1812, "wx": {"s": "ok", "r": ""}}], "wxRaw": {"LIMF": {"sa": "151250 VRB02KT 8000 NSC 21/12 Q1025=", "ft": "151100 1512/1612 VRB04KT CAVOK="}, "LIPE": {"sa": "151250 06004KT 360V110 CAVOK 21/12 Q1025=", "ft": "151100 1512/1612 VRB03KT CAVOK PROB40 TEMPO 1523/1607 3000 BR="}, "LIME": {"sa": "151250 21005KT 180V260 CAVOK 20/13 Q1025 NOSIG=", "ft": "151100 1512/1612 VRB04KT CAVOK="}, "LIRP": {"sa": "151245 28009KT 250V310 CAVOK 23/15 Q1025 NOSIG=", "ft": "151100 1512/1612 29010KT 9999 SCT030 BECMG 1518/1520 VRB03KT TEMPO 1524/1607 1500 BCFG="}}, "wxTime": "13:13", "pax": "148"}];
+const box=$('labbox'),FL=()=>LAST.length?LAST:SAMPLE;
+const save=()=>{try{localStorage.setItem('fslay',JSON.stringify(LY))}catch(e){}};
+const MY=()=>{try{const a=JSON.parse(localStorage.getItem('fslays')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}};
+const setMY=a=>{try{localStorage.setItem('fslays',JSON.stringify(a))}catch(e){}};
+box.innerHTML=`
+<style>
+#labbox .lh{font:700 12px/1.2 Barlow,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:20px 0 8px;padding-top:14px;border-top:1px solid rgba(128,128,128,.3)}
+#labbox .lh:first-of-type{border-top:0;margin-top:6px;padding-top:0}
+#labbox .pre{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#labbox .pre button{background:transparent;color:var(--fg);border:2px solid rgba(128,128,128,.4);text-align:left;padding:9px 10px;font-size:14px;line-height:1.25}
+#labbox .pre button.on{background:var(--btn);color:var(--btnfg);border-color:var(--btn)}
+#labbox .pdesc{margin:8px 0 0;color:var(--mut);font-size:13px;min-height:2.6em}
+#labbox .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+#labbox .g2 label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--mut)}
+#labbox .g2 input,#labbox .g2 select{font:600 15px Barlow,sans-serif;padding:8px;border:1px solid rgba(128,128,128,.45);border-radius:6px;background:var(--card);color:var(--fg);width:100%}
+#labbox .g2 input:disabled{opacity:.4}
+#labbox .chk{display:flex;gap:12px;align-items:flex-start;padding:9px 0;border-bottom:1px solid rgba(128,128,128,.2);cursor:pointer}
+#labbox .chk input{width:20px;height:20px;flex:none;margin:1px 0 0}
+#labbox .chk span{display:flex;flex-direction:column;gap:1px;font-weight:600}
+#labbox .chk small{font-weight:400;color:var(--mut);font-size:13px}
+#labbox .chk.off{opacity:.45}
+#labbox .fld{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0 3px}
+#labbox .fld label{display:flex;gap:12px;align-items:center;font-weight:700;font-size:16px}
+#labbox .fld input,#labbox .fsub input{width:20px;height:20px;flex:none;margin:0}
+#labbox .fsub{display:flex;gap:12px;align-items:center;margin:0 0 4px 9px;padding:3px 0 3px 21px;border-left:2px solid rgba(128,128,128,.35);color:var(--mut);font-weight:400;font-size:14px}
+#labbox .fld+.fld,#labbox .fsub+.fld{border-top:1px solid rgba(128,128,128,.2)}
+#labbox .mv{display:flex;gap:6px;flex:none;white-space:nowrap}
+#labbox .mv button{padding:6px 12px;min-width:42px;font-size:16px}
+#labbox details.thr{margin-top:6px}#labbox details.thr summary{font-weight:700;padding:6px 0}
+#labbox .row2{display:flex;gap:8px;margin:6px 0}#labbox .row2 input,#labbox .row2 select{flex:1;min-width:0;font:600 15px Barlow,sans-serif;padding:8px;border:1px solid rgba(128,128,128,.45);border-radius:6px;background:var(--card);color:var(--fg)}
+#labbox .info{margin:16px 0 8px;padding:8px 10px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--mut)}
+#labbox .rst{background:transparent;color:var(--fg);border:2px solid rgba(128,128,128,.4);margin-top:8px}
+#labbox .big{width:100%;padding:12px;font-size:16px}
+</style>
+<p class="sm" style="color:var(--mut);font-size:13px;margin:0">Test area: nothing here changes the main page. The preview uses your loaded flights, or 4 sample flights if none are loaded. The "Download A4 PDF" button below also uses the selected layout.</p>
+<div class="lh">Layout</div>
+<div class="pre" id="lyPre"></div><p class="pdesc" id="lyDesc"></p>
+<div class="lh">Page</div>
+<div class="g2">
+ <label>Cell style<select id="lySt"><option value="col">Vertical column</option><option value="band">Horizontal strip</option></select></label>
+ <label>Orientation<select id="lyOr"><option value="p">Portrait</option><option value="l">Landscape</option></select></label>
+ <label>Flights across (columns)<input id="lyC" type="number" inputmode="numeric" min="1" max="8"></label>
+ <label>Rows per page<input id="lyR" type="number" inputmode="numeric" min="1" max="6"></label>
+ <label>Print size<select id="lyS"><option value="auto">Auto (fill the cell)</option><option value="m">Manual</option></select></label>
+ <label>Manual size (%)<input id="lyP" type="number" inputmode="numeric" min="40" max="300"></label>
+ <label>Page margin (mm)<input id="lyM" type="number" inputmode="numeric" min="0" max="30"></label>
+ <label>Top space for the clip (mm)<input id="lyK" type="number" inputmode="numeric" min="0" max="25"></label>
+</div>
+<div class="lh">Thermal strip</div>
+<div class="g2"><label>Space at the top of each flight (mm)<input id="lyTh" type="number" inputmode="numeric" min="0" max="15" step="0.5"></label></div>
+<p class="pdesc" style="margin:6px 0 0;min-height:0">Blank space between the dashed cut line and the flight below it, so you can cut each flight and clip it. Applies the next time you press "Thermal strip".</p>
+<div class="lh">Options</div>
+<label class="chk"><input type="checkbox" id="lyCut"><span>Dashed cut / fold lines<small>Drawn between the flights to cut or fold along</small></span></label>
+<label class="chk" id="lyNewL"><input type="checkbox" id="lyNew"><span>Start a new row for each day<small>A new day never shares a row with the previous one</small></span></label>
+<label class="chk" id="lyBalL"><input type="checkbox" id="lyBal"><span>Balance flights between rows<small>Spread a day evenly over its rows: 6 flights = 3+3 instead of 4+2 (needs "new row for each day")</small></span></label>
+<div class="lh">Fields and their order</div>
+<p class="pdesc" style="margin:0 0 6px;min-height:0">Tick what to print and move blocks with the arrows. In horizontal strips the order runs left to right.</p>
+<div id="lyF"></div>
+<button type="button" class="rst" id="lyFr">Use the global A4 options</button>
+<div class="lh">My layouts</div>
+<div class="row2"><input id="lyN" placeholder="Name for the current layout"><button type="button" id="lySv">Save</button></div>
+<div class="row2"><select id="lyL"></select><button type="button" id="lyLd">Load</button><button type="button" id="lyDl" class="rst" style="margin:0">Delete</button></div>
+<details class="thr"><summary>Share a layout as text</summary>
+ <div class="row2"><button type="button" id="lyEx">Export</button><button type="button" id="lyIm">Import</button></div>
+ <textarea id="lyT" rows="2" style="width:100%" placeholder="The layout text appears here; paste one here and press Import"></textarea>
+</details>
+<div class="lh">Preview</div>
+<div class="info" id="lyInfo"></div>
+<button type="button" class="big" id="lyDo">Download this preview as PDF</button>
+<div class="info" id="lyMsg" hidden></div>
+<div id="labpv"></div>`;
+const $$=id=>box.querySelector('#'+id);
+const ALLK=['times','flt','procs','fuel','blockact','alts','wx','wts','pax','notes'];
+function ui(){
+  $$('lyOr').value=LY.orient;$$('lyC').value=LY.cols;$$('lyR').value=LY.rows;
+  $$('lyS').value=LY.scale==='auto'?'auto':'m';$$('lyP').value=LY.scale==='auto'?'':Math.round(LY.scale*100);$$('lyP').disabled=LY.scale==='auto';
+  $$('lyM').value=LY.margin;$$('lyTh').value=OPT.thClip==null?2:OPT.thClip;$$('lyK').value=LY.clip==null?2:LY.clip;$$('lyCut').checked=!!LY.cut;$$('lyNew').checked=!!LY.newrow;$$('lyBal').checked=!!LY.bal;$$('lyBal').disabled=!LY.newrow;
+  const ord=layOrder();
+  $$('lyF').innerHTML=ord.map((id,i)=>{const bl=BLK.find(x=>x[0]===id)[1],sub=SUB[id];
+    return `<div class="fld"><label><input type="checkbox" data-k="${id}"${layF(id)?' checked':''}${id==='head'?' disabled':''}> ${bl}</label><span class="mv"><button type="button" data-mv="${i}" data-d="-1"${i?'':' disabled'}>↑</button> <button type="button" data-mv="${i}" data-d="1"${i<ord.length-1?'':' disabled'}>↓</button></span></div>`+(sub?`<label class="fsub"><input type="checkbox" data-k="${sub[0]}"${layF(sub[0])?' checked':''}> ${sub[1]}</label>`:'')}).join('');
+  $$('lyF').querySelectorAll('input').forEach(i=>i.addEventListener('change',()=>{
+    const f={};ALLK.forEach(k=>{f[k]=layF(k)});f[i.dataset.k]=i.checked;LY.fields=f;chg()}));
+  $$('lyF').querySelectorAll('[data-mv]').forEach(b=>b.addEventListener('click',()=>{
+    const o=layOrder(),i=+b.dataset.mv,j=i+ +b.dataset.d;[o[i],o[j]]=[o[j],o[i]];LY.order=o;ui();chg()}));
+  $$('lySt').value=LY.style||'col';
+  $$('lyBalL').classList.toggle('off',!LY.newrow);
+  $$('lyPre').innerHTML=PRESETS.map((p,i)=>`<button type="button" data-p="${i}"${(LY.name===p.name||LY.name===p.name+' (edited)')?' class="on"':''}>${p.name}</button>`).join('');
+  $$('lyPre').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{const p=PRESETS[+b.dataset.p];LY=Object.assign({},LAYD,{name:p.name,orient:p.orient,cols:p.cols,rows:p.rows,newrow:p.newrow!==false,style:p.style||'col',fields:p.fields?Object.assign({},p.fields):null});chg(true)}));
+  const cur=PRESETS.find(p=>p.name===LY.name||p.name+' (edited)'===LY.name);$$('lyDesc').textContent=cur?cur.desc+(LY.name.endsWith('(edited)')?' (edited)':''):(LY.name||'Custom layout');
+  const my=MY();$$('lyL').innerHTML=my.map((m,i)=>`<option value="${i}">${m.name}</option>`).join('')||'<option value="">(none saved)</option>';
+}
+let tm=0;
+function chg(rebuild){optCss();if(LAST.length)$('out').innerHTML=render(LAST);LY.name=rebuild?LY.name:(PRESETS.some(p=>p.name===LY.name)?LY.name+' (edited)':LY.name);save();if(rebuild)ui();clearTimeout(tm);tm=setTimeout(prev,150)}
+const num=(id,min,max,f)=>$$(id).addEventListener('change',()=>{let v=Math.round(+$$(id).value);if(!isFinite(v))return;v=Math.min(max,Math.max(min,v));f(v);ui();chg()});
+$$('lySt').addEventListener('change',()=>{LY.style=$$('lySt').value;chg()});
+$$('lyOr').addEventListener('change',()=>{LY.orient=$$('lyOr').value;chg()});
+num('lyC',1,8,v=>LY.cols=v);num('lyR',1,6,v=>LY.rows=v);num('lyM',0,30,v=>LY.margin=v);num('lyK',0,25,v=>LY.clip=v);
+$$('lyTh').addEventListener('change',()=>{let v=parseFloat($$('lyTh').value);if(!isFinite(v))return;OPT.thClip=Math.min(15,Math.max(0,v));saveOpt()});
+$$('lyS').addEventListener('change',()=>{LY.scale=$$('lyS').value==='auto'?'auto':(LY._m||1);ui();chg()});
+num('lyP',40,300,v=>{LY.scale=v/100;LY._m=v/100});
+$$('lyCut').addEventListener('change',()=>{LY.cut=$$('lyCut').checked;chg()});
+$$('lyNew').addEventListener('change',()=>{LY.newrow=$$('lyNew').checked;ui();chg()});
+$$('lyBal').addEventListener('change',()=>{LY.bal=$$('lyBal').checked;chg()});
+$$('lyFr').addEventListener('click',()=>{LY.fields=null;ui();chg()});
+$$('lySv').addEventListener('click',()=>{const n=($$('lyN').value||'').trim();if(!n)return;const a=MY().filter(m=>m.name!==n);a.push(Object.assign({},LY,{name:n}));setMY(a);LY.name=n;save();ui()});
+$$('lyLd').addEventListener('click',()=>{const m=MY()[+$$('lyL').value];if(!m)return;LY=Object.assign({},LAYD,m);ui();chg()});
+$$('lyDl').addEventListener('click',()=>{const a=MY();a.splice(+$$('lyL').value,1);setMY(a);ui()});
+$$('lyEx').addEventListener('click',()=>{$$('lyT').value=JSON.stringify(LY)});
+$$('lyIm').addEventListener('click',()=>{try{const o=JSON.parse($$('lyT').value);if(!o||!o.cols)throw 0;LY=Object.assign({},LAYD,o);ui();chg()}catch(e){alert('Not a valid layout text')}});
+$$('lyDo').addEventListener('click',async()=>{const doc=buildPdf(FL(),LY);if(doc)await saveFile(doc.output('blob'),flightFileName('flight_sheet','pdf',FL()),$$('lyMsg'));else{$$('lyMsg').hidden=false;$$('lyMsg').textContent='PDF library not loaded: check your connection and reload the page.'}});
+let tk=0;
+async function prev(){
+  const my=++tk,pv=$$('labpv'),fl=FL(),doc=buildPdf(fl,LY);
+  if(!doc){pv.textContent='PDF library not loaded: check your connection and reload.';return}
+  const g=layGeom(LY),per=LY.cols*LY.rows,pages=Math.ceil(layStrips(fl,LY).length/LY.rows);
+  $$('lyInfo').textContent='Print size '+Math.round(doc._k*100)+'% · '+per+' flights per page · '+pages+' page'+(pages>1?'s':'')+' for '+fl.length+' flights'+(LAST.length?'':' (sample flights)')+' · cell '+g.cw.toFixed(0)+'×'+g.ch.toFixed(0)+' mm';
+  if(typeof pdfjsLib==='undefined'){pv.textContent='Preview needs the PDF library (internet on first use).';return}
+  try{
+    const pdf=await pdfjsLib.getDocument({data:doc.output('arraybuffer')}).promise;
+    if(my!==tk)return;
+    const cs=[];
+    for(let p=1;p<=Math.min(pdf.numPages,4);p++){
+      const pg=await pdf.getPage(p),vp=pg.getViewport({scale:1.6}),c=document.createElement('canvas');
+      c.width=vp.width;c.height=vp.height;c.style.cssText='width:100%;border:1px solid #888;margin:6px 0;background:#fff;display:block';
+      await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;cs.push(c);
+    }
+    if(my!==tk)return;
+    pv.innerHTML='';cs.forEach(c=>pv.appendChild(c));
+    if(pdf.numPages>4)pv.insertAdjacentHTML('beforeend','<p class="sm">Preview shows the first 4 pages of '+pdf.numPages+'.</p>');
+  }catch(e){pv.textContent='Preview error: '+e.message}
+}
+$('file').addEventListener('change',()=>setTimeout(prev,1500));
+const oa=window.afterChange;
+ui();prev();
+window.labPrev=prev;
+})();
+</script>
+
+</body>
+</html>
